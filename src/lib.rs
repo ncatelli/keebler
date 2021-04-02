@@ -10,9 +10,9 @@ struct ClassParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], Class> for ClassParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Class> {
-        parcel::parsers::byte::expect_byte(0x00)
+        parcel::parsers::byte::expect_byte(0x01)
             .map(|_| Class::ThirtyTwo)
-            .or(|| parcel::parsers::byte::expect_byte(0x01).map(|_| Class::SixtyFour))
+            .or(|| parcel::parsers::byte::expect_byte(0x02).map(|_| Class::SixtyFour))
             .parse(input)
     }
 }
@@ -23,9 +23,30 @@ pub enum Endianness {
     Big,
 }
 
+struct EndiannessParser;
+
+impl<'a> parcel::Parser<'a, &'a [u8], Endianness> for EndiannessParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Endianness> {
+        parcel::parsers::byte::expect_byte(0x01)
+            .map(|_| Endianness::Little)
+            .or(|| parcel::parsers::byte::expect_byte(0x02).map(|_| Endianness::Big))
+            .parse(input)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Version {
     One,
+}
+
+struct VersionParser;
+
+impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Version> {
+        parcel::parsers::byte::expect_byte(0x01)
+            .map(|_| Version::One)
+            .parse(input)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,21 +67,26 @@ impl<'a> parcel::Parser<'a, &'a [u8], ABI> for ABIParser {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ELFHeader {
     class: Class,
-    endianess: Endianness,
+    endianness: Endianness,
     version: Version,
     abi: ABI,
 }
 
-impl<'a> parcel::Parser<'a, &'a [u8], ELFHeader> for ELFHeader {
+pub struct ELFParser;
+
+impl<'a> parcel::Parser<'a, &'a [u8], ELFHeader> for ELFParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ELFHeader> {
         parcel::right(parcel::join(
             expect_bytes(&[0x7f, 0x45, 0x4c, 0x46]),
-            parcel::join(ClassParser, ABIParser),
+            parcel::join(
+                parcel::join(ClassParser, EndiannessParser),
+                parcel::join(VersionParser, ABIParser),
+            ),
         ))
-        .map(|(class, abi)| Self {
+        .map(|((class, endianness), (version, abi))| ELFHeader {
             class,
-            endianess: Endianness::Little,
-            version: Version::One,
+            endianness,
+            version,
             abi,
         })
         .parse(input)
@@ -82,8 +108,19 @@ pub fn expect_bytes<'a>(expected: &'static [u8]) -> impl Parser<'a, &'a [u8], Ve
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn parse_known_good_header() {
+        let input = [0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00];
+
+        assert_eq!(
+            ELFParser.parse(&input).unwrap().unwrap(),
+            ELFHeader {
+                class: Class::ThirtyTwo,
+                endianness: Endianness::Little,
+                version: Version::One,
+                abi: ABI::SysV,
+            }
+        )
     }
 }

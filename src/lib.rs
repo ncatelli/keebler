@@ -65,11 +65,33 @@ impl<'a> parcel::Parser<'a, &'a [u8], ABI> for ABIParser {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Type {
+    None,
+    Rel,
+    Exec,
+    Dyn,
+    Core,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Machine {
+    X86,
+    X86_64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntryPoint(pub u64);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ELFHeader {
     class: Class,
     endianness: Endianness,
     version: Version,
     abi: ABI,
+    r#type: Type,
+    machine: Machine,
+    vers: Version,
+    entry_point: EntryPoint,
 }
 
 pub struct ELFParser;
@@ -90,6 +112,10 @@ impl<'a> parcel::Parser<'a, &'a [u8], ELFHeader> for ELFParser {
             endianness,
             version,
             abi,
+            r#type: Type::None,
+            machine: Machine::X86,
+            vers: version,
+            entry_point: EntryPoint(0),
         })
         .parse(input)
     }
@@ -125,6 +151,10 @@ mod tests {
                 endianness: Endianness::Little,
                 version: Version::One,
                 abi: ABI::SysV,
+                r#type: Type::None,
+                machine: Machine::X86_64,
+                vers: Version::One,
+                entry_point: EntryPoint(0),
             }
         )
     }

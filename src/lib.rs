@@ -83,6 +83,8 @@ impl<'a> parcel::Parser<'a, &'a [u8], ELFHeader> for ELFParser {
                 parcel::join(VersionParser, ABIParser),
             ),
         ))
+        // skip padding
+        .and_then(|last| parcel::take_n(parcel::parsers::byte::any_byte(), 8).map(move |_| last))
         .map(|((class, endianness), (version, abi))| ELFHeader {
             class,
             endianness,
@@ -111,7 +113,10 @@ mod tests {
     use super::*;
     #[test]
     fn parse_known_good_header() {
-        let input = [0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00];
+        let input = [
+            0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00,
+        ];
 
         assert_eq!(
             ELFParser.parse(&input).unwrap().unwrap(),

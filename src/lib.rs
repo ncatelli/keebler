@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use parcel::prelude::v1::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -311,21 +313,38 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
             expect_bytes(&[0x7f, 0x45, 0x4c, 0x46]),
             parcel::join(
                 parcel::join(ClassParser, EndiannessParser),
-                parcel::join(VersionParser, ABIParser),
+                parcel::join(
+                    parcel::join(VersionParser, ABIParser),
+                    parcel::join(
+                        TypeParser,
+                        parcel::join(
+                            MachineParser,
+                            parcel::join(
+                                VersionParser,
+                                parcel::take_n(parcel::parsers::byte::any_byte(), 8)
+                                    .map(|b| u64::from_ne_bytes(b.try_into().unwrap())),
+                            ),
+                        ),
+                    ),
+                ),
             ),
         ))
         // skip padding
         .and_then(|last| parcel::take_n(parcel::parsers::byte::any_byte(), 8).map(move |_| last))
-        .map(|((class, endianness), (version, abi))| FileHeader {
-            class,
-            endianness,
-            version,
-            abi,
-            r#type: Type::None,
-            machine: Machine::X86_64,
-            vers: version,
-            entry_point: EntryPoint(0),
-        })
+        .map(
+            |((class, endianness), ((version, abi), (r#type, (machine, (_, entrypoint)))))| {
+                FileHeader {
+                    class,
+                    endianness,
+                    version,
+                    abi,
+                    r#type,
+                    machine,
+                    vers: version,
+                    entry_point: EntryPoint(entrypoint),
+                }
+            },
+        )
         .parse(input)
     }
 }

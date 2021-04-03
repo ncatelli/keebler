@@ -145,6 +145,12 @@ pub enum Type {
     HIPROC = 0xFFFF,
 }
 
+impl From<Type> for u16 {
+    fn from(src: Type) -> Self {
+        src as u16
+    }
+}
+
 struct TypeParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser {

@@ -19,10 +19,11 @@ struct ClassParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], Class> for ClassParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Class> {
-        parcel::parsers::byte::expect_byte(0x01)
-            .map(|_| Class::ThirtyTwo)
-            .or(|| parcel::parsers::byte::expect_byte(0x02).map(|_| Class::SixtyFour))
-            .parse(input)
+        parcel::one_of(vec![
+            parcel::parsers::byte::expect_byte(0x01).map(|_| Class::ThirtyTwo),
+            parcel::parsers::byte::expect_byte(0x02).map(|_| Class::SixtyFour),
+        ])
+        .parse(input)
     }
 }
 
@@ -221,6 +222,70 @@ pub enum Machine {
     RISCV = 0xF3,
     BPF = 0xF7,
     WDC65C817 = 0x101,
+}
+
+impl From<Machine> for u16 {
+    fn from(src: Machine) -> Self {
+        src as u16
+    }
+}
+
+struct MachineParser;
+
+impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Machine> {
+        parcel::one_of(vec![
+            expect_u16(Machine::None as u16).map(|_| Machine::None),
+            expect_u16(Machine::M32 as u16).map(|_| Machine::M32),
+            expect_u16(Machine::SPARC as u16).map(|_| Machine::SPARC),
+            expect_u16(Machine::X386 as u16).map(|_| Machine::X386),
+            expect_u16(Machine::M68k as u16).map(|_| Machine::M68k),
+            expect_u16(Machine::M88k as u16).map(|_| Machine::M88k),
+            expect_u16(Machine::IntelMCU as u16).map(|_| Machine::IntelMCU),
+            expect_u16(Machine::Intel80860 as u16).map(|_| Machine::Intel80860),
+            expect_u16(Machine::MIPS as u16).map(|_| Machine::MIPS),
+            expect_u16(Machine::S370 as u16).map(|_| Machine::S370),
+            expect_u16(Machine::MIPSRS3LE as u16).map(|_| Machine::MIPSRS3LE),
+            expect_u16(Machine::PARISC as u16).map(|_| Machine::PARISC),
+            expect_u16(Machine::I960 as u16).map(|_| Machine::I960),
+            expect_u16(Machine::PPC as u16).map(|_| Machine::PPC),
+            expect_u16(Machine::PPC64 as u16).map(|_| Machine::PPC64),
+            expect_u16(Machine::S390 as u16).map(|_| Machine::S390),
+            expect_u16(Machine::V800 as u16).map(|_| Machine::V800),
+            expect_u16(Machine::FR20 as u16).map(|_| Machine::FR20),
+            expect_u16(Machine::RH32 as u16).map(|_| Machine::RH32),
+            expect_u16(Machine::RCE as u16).map(|_| Machine::RCE),
+            expect_u16(Machine::ARM as u16).map(|_| Machine::ARM),
+            expect_u16(Machine::Alpha as u16).map(|_| Machine::Alpha),
+            expect_u16(Machine::SH as u16).map(|_| Machine::SH),
+            expect_u16(Machine::SPARCV9 as u16).map(|_| Machine::SPARCV9),
+            expect_u16(Machine::Tricore as u16).map(|_| Machine::Tricore),
+            expect_u16(Machine::ARC as u16).map(|_| Machine::ARC),
+            expect_u16(Machine::H8300 as u16).map(|_| Machine::H8300),
+            expect_u16(Machine::H8_300H as u16).map(|_| Machine::H8_300H),
+            expect_u16(Machine::H8s as u16).map(|_| Machine::H8s),
+            expect_u16(Machine::H8500 as u16).map(|_| Machine::H8500),
+            expect_u16(Machine::IA64 as u16).map(|_| Machine::IA64),
+            expect_u16(Machine::MIPSX as u16).map(|_| Machine::MIPSX),
+            expect_u16(Machine::Coldfire as u16).map(|_| Machine::Coldfire),
+            expect_u16(Machine::M68HC12 as u16).map(|_| Machine::M68HC12),
+            expect_u16(Machine::MMA as u16).map(|_| Machine::MMA),
+            expect_u16(Machine::PCP as u16).map(|_| Machine::PCP),
+            expect_u16(Machine::NCPU as u16).map(|_| Machine::NCPU),
+            expect_u16(Machine::NDR1 as u16).map(|_| Machine::NDR1),
+            expect_u16(Machine::Starcore as u16).map(|_| Machine::Starcore),
+            expect_u16(Machine::ME16 as u16).map(|_| Machine::ME16),
+            expect_u16(Machine::ST100 as u16).map(|_| Machine::ST100),
+            expect_u16(Machine::TinyJ as u16).map(|_| Machine::TinyJ),
+            expect_u16(Machine::X86_64 as u16).map(|_| Machine::X86_64),
+            expect_u16(Machine::S320C600 as u16).map(|_| Machine::S320C600),
+            expect_u16(Machine::AARCH64 as u16).map(|_| Machine::AARCH64),
+            expect_u16(Machine::RISCV as u16).map(|_| Machine::RISCV),
+            expect_u16(Machine::BPF as u16).map(|_| Machine::BPF),
+            expect_u16(Machine::WDC65C817 as u16).map(|_| Machine::WDC65C817),
+        ])
+        .parse(input)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

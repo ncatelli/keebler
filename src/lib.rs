@@ -14,27 +14,27 @@ impl std::fmt::Debug for FileErr {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Class {
+pub enum EIClass {
     ThirtyTwo,
     SixtyFour,
 }
 
-impl From<Class> for u8 {
-    fn from(src: Class) -> Self {
+impl From<EIClass> for u8 {
+    fn from(src: EIClass) -> Self {
         match src {
-            Class::ThirtyTwo => 1,
-            Class::SixtyFour => 2,
+            EIClass::ThirtyTwo => 1,
+            EIClass::SixtyFour => 2,
         }
     }
 }
 
-struct ClassParser;
+struct EIClassParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], Class> for ClassParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Class> {
+impl<'a> parcel::Parser<'a, &'a [u8], EIClass> for EIClassParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIClass> {
         parcel::one_of(vec![
-            parcel::parsers::byte::expect_byte(0x01).map(|_| Class::ThirtyTwo),
-            parcel::parsers::byte::expect_byte(0x02).map(|_| Class::SixtyFour),
+            parcel::parsers::byte::expect_byte(0x01).map(|_| EIClass::ThirtyTwo),
+            parcel::parsers::byte::expect_byte(0x02).map(|_| EIClass::SixtyFour),
         ])
         .parse(input)
     }
@@ -42,25 +42,24 @@ impl<'a> parcel::Parser<'a, &'a [u8], Class> for ClassParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum Endianness {
+pub enum EIData {
     Little = 0x01,
     Big = 0x02,
 }
 
-impl From<Endianness> for u8 {
-    fn from(src: Endianness) -> Self {
+impl From<EIData> for u8 {
+    fn from(src: EIData) -> Self {
         src as u8
     }
 }
 
-struct EndiannessParser;
+struct EIDataParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], Endianness> for EndiannessParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Endianness> {
+impl<'a> parcel::Parser<'a, &'a [u8], EIData> for EIDataParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIData> {
         parcel::one_of(vec![
-            parcel::parsers::byte::expect_byte(Endianness::Little as u8)
-                .map(|_| Endianness::Little),
-            parcel::parsers::byte::expect_byte(Endianness::Big as u8).map(|_| Endianness::Big),
+            parcel::parsers::byte::expect_byte(EIData::Little as u8).map(|_| EIData::Little),
+            parcel::parsers::byte::expect_byte(EIData::Big as u8).map(|_| EIData::Big),
         ])
         .parse(input)
     }
@@ -68,29 +67,29 @@ impl<'a> parcel::Parser<'a, &'a [u8], Endianness> for EndiannessParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum ABIVersion {
+pub enum EIVersion {
     One = 1,
 }
 
-impl From<ABIVersion> for u8 {
-    fn from(src: ABIVersion) -> Self {
+impl From<EIVersion> for u8 {
+    fn from(src: EIVersion) -> Self {
         src as u8
     }
 }
 
-struct ABIVersionParser;
+struct EIVersionParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], ABIVersion> for ABIVersionParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ABIVersion> {
-        parcel::parsers::byte::expect_byte(ABIVersion::One as u8)
-            .map(|_| ABIVersion::One)
+impl<'a> parcel::Parser<'a, &'a [u8], EIVersion> for EIVersionParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIVersion> {
+        parcel::parsers::byte::expect_byte(EIVersion::One as u8)
+            .map(|_| EIVersion::One)
             .parse(input)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-pub enum ABI {
+pub enum EIOSABI {
     SysV = 0x00,
     HPUX = 0x01,
     NetBSD = 0x02,
@@ -111,35 +110,35 @@ pub enum ABI {
     OpenVOS = 0x12,
 }
 
-impl From<ABI> for u16 {
-    fn from(src: ABI) -> Self {
+impl From<EIOSABI> for u16 {
+    fn from(src: EIOSABI) -> Self {
         src as u16
     }
 }
 
-struct ABIParser;
+struct EIOSABIParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], ABI> for ABIParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ABI> {
+impl<'a> parcel::Parser<'a, &'a [u8], EIOSABI> for EIOSABIParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIOSABI> {
         parcel::one_of(vec![
-            expect_u16(ABI::SysV as u16).map(|_| ABI::SysV),
-            expect_u16(ABI::HPUX as u16).map(|_| ABI::HPUX),
-            expect_u16(ABI::NetBSD as u16).map(|_| ABI::NetBSD),
-            expect_u16(ABI::Linux as u16).map(|_| ABI::Linux),
-            expect_u16(ABI::GNUHurd as u16).map(|_| ABI::GNUHurd),
-            expect_u16(ABI::Solaris as u16).map(|_| ABI::Solaris),
-            expect_u16(ABI::AIX as u16).map(|_| ABI::AIX),
-            expect_u16(ABI::IRIX as u16).map(|_| ABI::IRIX),
-            expect_u16(ABI::FreeBSD as u16).map(|_| ABI::FreeBSD),
-            expect_u16(ABI::Tru64 as u16).map(|_| ABI::Tru64),
-            expect_u16(ABI::Novell as u16).map(|_| ABI::Novell),
-            expect_u16(ABI::OpenBSD as u16).map(|_| ABI::OpenBSD),
-            expect_u16(ABI::OpenVMS as u16).map(|_| ABI::OpenVMS),
-            expect_u16(ABI::NonStop as u16).map(|_| ABI::NonStop),
-            expect_u16(ABI::Aros as u16).map(|_| ABI::Aros),
-            expect_u16(ABI::Fenix as u16).map(|_| ABI::Fenix),
-            expect_u16(ABI::CloudABI as u16).map(|_| ABI::CloudABI),
-            expect_u16(ABI::OpenVOS as u16).map(|_| ABI::OpenVOS),
+            expect_u16(EIOSABI::SysV as u16).map(|_| EIOSABI::SysV),
+            expect_u16(EIOSABI::HPUX as u16).map(|_| EIOSABI::HPUX),
+            expect_u16(EIOSABI::NetBSD as u16).map(|_| EIOSABI::NetBSD),
+            expect_u16(EIOSABI::Linux as u16).map(|_| EIOSABI::Linux),
+            expect_u16(EIOSABI::GNUHurd as u16).map(|_| EIOSABI::GNUHurd),
+            expect_u16(EIOSABI::Solaris as u16).map(|_| EIOSABI::Solaris),
+            expect_u16(EIOSABI::AIX as u16).map(|_| EIOSABI::AIX),
+            expect_u16(EIOSABI::IRIX as u16).map(|_| EIOSABI::IRIX),
+            expect_u16(EIOSABI::FreeBSD as u16).map(|_| EIOSABI::FreeBSD),
+            expect_u16(EIOSABI::Tru64 as u16).map(|_| EIOSABI::Tru64),
+            expect_u16(EIOSABI::Novell as u16).map(|_| EIOSABI::Novell),
+            expect_u16(EIOSABI::OpenBSD as u16).map(|_| EIOSABI::OpenBSD),
+            expect_u16(EIOSABI::OpenVMS as u16).map(|_| EIOSABI::OpenVMS),
+            expect_u16(EIOSABI::NonStop as u16).map(|_| EIOSABI::NonStop),
+            expect_u16(EIOSABI::Aros as u16).map(|_| EIOSABI::Aros),
+            expect_u16(EIOSABI::Fenix as u16).map(|_| EIOSABI::Fenix),
+            expect_u16(EIOSABI::CloudABI as u16).map(|_| EIOSABI::CloudABI),
+            expect_u16(EIOSABI::OpenVOS as u16).map(|_| EIOSABI::OpenVOS),
         ])
         .parse(input)
     }
@@ -289,10 +288,10 @@ pub enum EntryPoint {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileHeader {
-    class: Class,
-    endianness: Endianness,
-    abi_version: ABIVersion,
-    abi: ABI,
+    ei_class: EIClass,
+    ei_data: EIData,
+    ei_version: EIVersion,
+    ei_osabi: EIOSABI,
     r#type: Type,
     machine: Machine,
     version: Version,
@@ -304,10 +303,10 @@ pub struct FileHeaderParser;
 impl FileHeaderParser {
     /// preamble parses the elf magic bytes and class, returning the class if
     /// the elf file has a valid preamble.
-    pub fn preamble(input: &[u8]) -> Result<Class, FileErr> {
+    pub fn preamble(input: &[u8]) -> Result<EIClass, FileErr> {
         parcel::right(parcel::join(
             expect_bytes(&[0x7f, 0x45, 0x4c, 0x46]),
-            ClassParser,
+            EIClassParser,
         ))
         .parse(input)
         .map(|ms| match ms {
@@ -321,18 +320,18 @@ impl FileHeaderParser {
 
 impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader> {
-        let class = Self::preamble(input).map_err(|e| format!("{:?}", e))?;
+        let ei_class = Self::preamble(input).map_err(|e| format!("{:?}", e))?;
 
-        parcel::join(EndiannessParser, parcel::join(ABIVersionParser, ABIParser))
+        parcel::join(EIDataParser, parcel::join(EIVersionParser, EIOSABIParser))
             // skip padding
             .and_then(|last| {
                 parcel::take_n(parcel::parsers::byte::any_byte(), 7).map(move |_| last)
             })
-            .map(move |(endianness, (abi_version, abi))| FileHeader {
-                class,
-                endianness,
-                abi_version,
-                abi,
+            .map(move |(ei_data, (ei_version, ei_osabi))| FileHeader {
+                ei_class,
+                ei_data,
+                ei_version,
+                ei_osabi,
                 r#type: Type::None,
                 machine: Machine::X86_64,
                 version: Version::One,
@@ -378,11 +377,11 @@ mod tests {
         let invalid_input = [0xff, 0xff, 0xff, 0xff, 0xff];
 
         assert_eq!(
-            Ok(Class::ThirtyTwo),
+            Ok(EIClass::ThirtyTwo),
             FileHeaderParser::preamble(&thirty_two_bit_input)
         );
         assert_eq!(
-            Ok(Class::SixtyFour),
+            Ok(EIClass::SixtyFour),
             FileHeaderParser::preamble(&sixty_four_bit_input)
         );
         assert!(FileHeaderParser::preamble(&invalid_input).is_err());
@@ -398,10 +397,10 @@ mod tests {
         assert_eq!(
             FileHeaderParser.parse(&input).unwrap().unwrap(),
             FileHeader {
-                class: Class::ThirtyTwo,
-                endianness: Endianness::Little,
-                abi_version: ABIVersion::One,
-                abi: ABI::SysV,
+                ei_class: EIClass::ThirtyTwo,
+                ei_data: EIData::Little,
+                ei_version: EIVersion::One,
+                ei_osabi: EIOSABI::SysV,
                 r#type: Type::None,
                 machine: Machine::X86_64,
                 version: Version::One,

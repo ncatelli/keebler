@@ -1,6 +1,17 @@
-use std::convert::TryInto;
-
 use parcel::prelude::v1::*;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum FileErr {
+    InvalidFile,
+}
+
+impl std::fmt::Debug for FileErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidFile => write!(f, "not an elf formatted file"),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Class {
@@ -57,22 +68,22 @@ impl<'a> parcel::Parser<'a, &'a [u8], Endianness> for EndiannessParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum Version {
+pub enum ABIVersion {
     One = 1,
 }
 
-impl From<Version> for u8 {
-    fn from(src: Version) -> Self {
+impl From<ABIVersion> for u8 {
+    fn from(src: ABIVersion) -> Self {
         src as u8
     }
 }
 
-struct VersionParser;
+struct ABIVersionParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Version> {
-        parcel::parsers::byte::expect_byte(Version::One as u8)
-            .map(|_| Version::One)
+impl<'a> parcel::Parser<'a, &'a [u8], ABIVersion> for ABIVersionParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ABIVersion> {
+        parcel::parsers::byte::expect_byte(ABIVersion::One as u8)
+            .map(|_| ABIVersion::One)
             .parse(input)
     }
 }
@@ -236,116 +247,98 @@ struct MachineParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Machine> {
-        parcel::one_of(vec![
-            expect_u16(Machine::None as u16).map(|_| Machine::None),
-            expect_u16(Machine::M32 as u16).map(|_| Machine::M32),
-            expect_u16(Machine::SPARC as u16).map(|_| Machine::SPARC),
-            expect_u16(Machine::X386 as u16).map(|_| Machine::X386),
-            expect_u16(Machine::M68k as u16).map(|_| Machine::M68k),
-            expect_u16(Machine::M88k as u16).map(|_| Machine::M88k),
-            expect_u16(Machine::IntelMCU as u16).map(|_| Machine::IntelMCU),
-            expect_u16(Machine::Intel80860 as u16).map(|_| Machine::Intel80860),
-            expect_u16(Machine::MIPS as u16).map(|_| Machine::MIPS),
-            expect_u16(Machine::S370 as u16).map(|_| Machine::S370),
-            expect_u16(Machine::MIPSRS3LE as u16).map(|_| Machine::MIPSRS3LE),
-            expect_u16(Machine::PARISC as u16).map(|_| Machine::PARISC),
-            expect_u16(Machine::I960 as u16).map(|_| Machine::I960),
-            expect_u16(Machine::PPC as u16).map(|_| Machine::PPC),
-            expect_u16(Machine::PPC64 as u16).map(|_| Machine::PPC64),
-            expect_u16(Machine::S390 as u16).map(|_| Machine::S390),
-            expect_u16(Machine::V800 as u16).map(|_| Machine::V800),
-            expect_u16(Machine::FR20 as u16).map(|_| Machine::FR20),
-            expect_u16(Machine::RH32 as u16).map(|_| Machine::RH32),
-            expect_u16(Machine::RCE as u16).map(|_| Machine::RCE),
-            expect_u16(Machine::ARM as u16).map(|_| Machine::ARM),
-            expect_u16(Machine::Alpha as u16).map(|_| Machine::Alpha),
-            expect_u16(Machine::SH as u16).map(|_| Machine::SH),
-            expect_u16(Machine::SPARCV9 as u16).map(|_| Machine::SPARCV9),
-            expect_u16(Machine::Tricore as u16).map(|_| Machine::Tricore),
-            expect_u16(Machine::ARC as u16).map(|_| Machine::ARC),
-            expect_u16(Machine::H8300 as u16).map(|_| Machine::H8300),
-            expect_u16(Machine::H8_300H as u16).map(|_| Machine::H8_300H),
-            expect_u16(Machine::H8s as u16).map(|_| Machine::H8s),
-            expect_u16(Machine::H8500 as u16).map(|_| Machine::H8500),
-            expect_u16(Machine::IA64 as u16).map(|_| Machine::IA64),
-            expect_u16(Machine::MIPSX as u16).map(|_| Machine::MIPSX),
-            expect_u16(Machine::Coldfire as u16).map(|_| Machine::Coldfire),
-            expect_u16(Machine::M68HC12 as u16).map(|_| Machine::M68HC12),
-            expect_u16(Machine::MMA as u16).map(|_| Machine::MMA),
-            expect_u16(Machine::PCP as u16).map(|_| Machine::PCP),
-            expect_u16(Machine::NCPU as u16).map(|_| Machine::NCPU),
-            expect_u16(Machine::NDR1 as u16).map(|_| Machine::NDR1),
-            expect_u16(Machine::Starcore as u16).map(|_| Machine::Starcore),
-            expect_u16(Machine::ME16 as u16).map(|_| Machine::ME16),
-            expect_u16(Machine::ST100 as u16).map(|_| Machine::ST100),
-            expect_u16(Machine::TinyJ as u16).map(|_| Machine::TinyJ),
-            expect_u16(Machine::X86_64 as u16).map(|_| Machine::X86_64),
-            expect_u16(Machine::S320C600 as u16).map(|_| Machine::S320C600),
-            expect_u16(Machine::AARCH64 as u16).map(|_| Machine::AARCH64),
-            expect_u16(Machine::RISCV as u16).map(|_| Machine::RISCV),
-            expect_u16(Machine::BPF as u16).map(|_| Machine::BPF),
-            expect_u16(Machine::WDC65C817 as u16).map(|_| Machine::WDC65C817),
-        ])
-        .parse(input)
+        use std::convert::TryInto;
+        let preparse_input = input;
+
+        // Should be safe to unwrap.
+        let mcode = input
+            .iter()
+            .take(2)
+            .copied()
+            .collect::<Vec<u8>>()
+            .try_into()
+            .unwrap();
+
+        match u16::from_ne_bytes(mcode) {
+            0x00 => Some(Machine::None),
+            _ => None,
+        }
+        .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
+            Ok(MatchStatus::Match((&preparse_input[2..], m)))
+        })
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct EntryPoint(pub u64);
+#[repr(u32)]
+pub enum Version {
+    One = 0x01,
+}
+
+impl From<Version> for u32 {
+    fn from(src: Version) -> Self {
+        src as u32
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntryPoint {
+    ThirtyTwo(u32),
+    SixtyFour(u64),
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileHeader {
     class: Class,
     endianness: Endianness,
-    version: Version,
+    abi_version: ABIVersion,
     abi: ABI,
     r#type: Type,
     machine: Machine,
-    vers: Version,
+    version: Version,
     entry_point: EntryPoint,
 }
 
 pub struct FileHeaderParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader> {
+impl FileHeaderParser {
+    /// preamble parses the elf magic bytes and class, returning the class if
+    /// the elf file has a valid preamble.
+    pub fn preamble(input: &[u8]) -> Result<Class, FileErr> {
         parcel::right(parcel::join(
             expect_bytes(&[0x7f, 0x45, 0x4c, 0x46]),
-            parcel::join(
-                parcel::join(ClassParser, EndiannessParser),
-                parcel::join(
-                    parcel::join(VersionParser, ABIParser),
-                    parcel::join(
-                        TypeParser,
-                        parcel::join(
-                            MachineParser,
-                            parcel::join(
-                                VersionParser,
-                                parcel::take_n(parcel::parsers::byte::any_byte(), 8)
-                                    .map(|b| u64::from_ne_bytes(b.try_into().unwrap())),
-                            ),
-                        ),
-                    ),
-                ),
-            ),
+            ClassParser,
         ))
-        // skip padding
-        .and_then(|last| parcel::take_n(parcel::parsers::byte::any_byte(), 8).map(move |_| last))
-        .map(
-            |((class, endianness), ((version, abi), (r#type, (machine, (_, entrypoint)))))| {
-                FileHeader {
-                    class,
-                    endianness,
-                    version,
-                    abi,
-                    r#type,
-                    machine,
-                    vers: version,
-                    entry_point: EntryPoint(entrypoint),
-                }
-            },
-        )
         .parse(input)
+        .map(|ms| match ms {
+            MatchStatus::Match((_, class)) => Some(class),
+            MatchStatus::NoMatch(_) => None,
+        })
+        .map_err(|_| FileErr::InvalidFile)?
+        .ok_or(FileErr::InvalidFile)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader> {
+        let class = Self::preamble(input).map_err(|e| format!("{:?}", e))?;
+
+        parcel::join(EndiannessParser, parcel::join(ABIVersionParser, ABIParser))
+            // skip padding
+            .and_then(|last| {
+                parcel::take_n(parcel::parsers::byte::any_byte(), 7).map(move |_| last)
+            })
+            .map(move |(endianness, (abi_version, abi))| FileHeader {
+                class,
+                endianness,
+                abi_version,
+                abi,
+                r#type: Type::None,
+                machine: Machine::X86_64,
+                version: Version::One,
+                entry_point: EntryPoint::SixtyFour(0),
+            })
+            .parse(&input[5..])
     }
 }
 
@@ -377,6 +370,24 @@ pub fn expect_u16<'a>(expected: u16) -> impl Parser<'a, &'a [u8], u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_preamble_should_return_expected_results() {
+        let thirty_two_bit_input = [0x7f, 0x45, 0x4c, 0x46, 0x01];
+        let sixty_four_bit_input = [0x7f, 0x45, 0x4c, 0x46, 0x02];
+        let invalid_input = [0xff, 0xff, 0xff, 0xff, 0xff];
+
+        assert_eq!(
+            Ok(Class::ThirtyTwo),
+            FileHeaderParser::preamble(&thirty_two_bit_input)
+        );
+        assert_eq!(
+            Ok(Class::SixtyFour),
+            FileHeaderParser::preamble(&sixty_four_bit_input)
+        );
+        assert!(FileHeaderParser::preamble(&invalid_input).is_err());
+    }
+
     #[test]
     fn parse_known_good_header() {
         let input = [
@@ -389,12 +400,12 @@ mod tests {
             FileHeader {
                 class: Class::ThirtyTwo,
                 endianness: Endianness::Little,
-                version: Version::One,
+                abi_version: ABIVersion::One,
                 abi: ABI::SysV,
                 r#type: Type::None,
                 machine: Machine::X86_64,
-                vers: Version::One,
-                entry_point: EntryPoint(0),
+                version: Version::One,
+                entry_point: EntryPoint::SixtyFour(0),
             }
         )
     }

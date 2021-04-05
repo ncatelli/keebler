@@ -350,6 +350,16 @@ impl From<Version> for u32 {
     }
 }
 
+struct VersionParser;
+
+impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Version> {
+        parcel::parsers::byte::expect_byte(Version::One as u8)
+            .map(|_| Version::One)
+            .parse(input)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntryPoint {
     ThirtyTwo(u32),
@@ -436,12 +446,12 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
-        parcel::join(TypeParser, MachineParser)
-            .map(move |(r#type, machine)| FileHeader {
+        parcel::join(TypeParser, parcel::join(MachineParser, VersionParser))
+            .map(move |(r#type, (machine, version))| FileHeader {
                 ei_ident,
                 r#type,
                 machine,
-                version: Version::One,
+                version,
                 entry_point: EntryPoint::SixtyFour(0),
             })
             .parse(&input[16..])
@@ -510,7 +520,7 @@ mod tests {
     fn parse_known_good_header() {
         let input = [
             0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x03, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00,
         ];
 
         assert_eq!(

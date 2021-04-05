@@ -31,8 +31,10 @@ struct EIClassParser;
 impl<'a> parcel::Parser<'a, &'a [u8], EIClass> for EIClassParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIClass> {
         parcel::one_of(vec![
-            parcel::parsers::byte::expect_byte(0x01).map(|_| EIClass::ThirtyTwo),
-            parcel::parsers::byte::expect_byte(0x02).map(|_| EIClass::SixtyFour),
+            parcel::parsers::byte::expect_byte(EIClass::ThirtyTwo as u8)
+                .map(|_| EIClass::ThirtyTwo),
+            parcel::parsers::byte::expect_byte(EIClass::SixtyFour as u8)
+                .map(|_| EIClass::SixtyFour),
         ])
         .parse(input)
     }
@@ -366,6 +368,35 @@ pub enum EntryPoint {
     SixtyFour(u64),
 }
 
+struct EntryPointParser(EIClass);
+
+impl<'a> parcel::Parser<'a, &'a [u8], EntryPoint> for EntryPointParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EntryPoint> {
+        use parcel::parsers::byte::any_byte;
+        use std::convert::TryInto;
+
+        let class = self.0;
+        match class {
+            EIClass::ThirtyTwo => parcel::take_n(any_byte(), 4).map(|b| {
+                b.try_into()
+                    .map(|ep| {
+                        println!("{:?}", &ep);
+                        u32::from_be_bytes(ep)
+                    })
+                    .map(|ep| EntryPoint::ThirtyTwo(ep))
+                    .unwrap()
+            }),
+            EIClass::SixtyFour => parcel::take_n(any_byte(), 8).map(|b| {
+                b.try_into()
+                    .map(|ep| u64::from_be_bytes(ep))
+                    .map(|ep| EntryPoint::SixtyFour(ep))
+                    .unwrap()
+            }),
+        }
+        .parse(input)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// EIIdent defines the elf identification fields that define whether the
 /// address size, versions and abi of the file.
@@ -446,15 +477,23 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
-        parcel::join(TypeParser, parcel::join(MachineParser, VersionParser))
-            .map(move |(r#type, (machine, version))| FileHeader {
+        parcel::join(
+            TypeParser,
+            parcel::join(
+                MachineParser,
+                parcel::join(VersionParser, EntryPointParser(ei_ident.ei_class)),
+            ),
+        )
+        .map(
+            move |(r#type, (machine, (version, entry_point)))| FileHeader {
                 ei_ident,
                 r#type,
                 machine,
                 version,
-                entry_point: EntryPoint::SixtyFour(0),
-            })
-            .parse(&input[16..])
+                entry_point,
+            },
+        )
+        .parse(&input[16..])
     }
 }
 
@@ -520,7 +559,7 @@ mod tests {
     fn parse_known_good_header() {
         let input = [
             0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
         ];
 
         assert_eq!(
@@ -536,7 +575,7 @@ mod tests {
                 r#type: Type::None,
                 machine: Machine::X386,
                 version: Version::One,
-                entry_point: EntryPoint::SixtyFour(0),
+                entry_point: EntryPoint::ThirtyTwo(5),
             }
         )
     }

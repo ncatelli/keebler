@@ -312,6 +312,8 @@ pub enum EntryPoint {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// EIIdent defines the elf identification fields that define whether the
+/// address size, versions and abi of the file.
 pub struct EIIdent {
     ei_class: EIClass,
     ei_data: EIData,
@@ -320,6 +322,7 @@ pub struct EIIdent {
     ei_abiversion: EIABIVersion,
 }
 
+/// EIIdentParser defines a parser for parsing a raw bitstream into an EIIdent.
 pub struct EIIdentParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EIIdent> for EIIdentParser {
@@ -355,6 +358,9 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIIdent> for EIIdentParser {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// FileHeader represents a program file header, and contains ELF identifaction
+/// information along with sizing, architechture and additional metadata about
+/// other ELF headers.
 pub struct FileHeader {
     ei_ident: EIIdent,
     r#type: Type,
@@ -363,6 +369,7 @@ pub struct FileHeader {
     entry_point: EntryPoint,
 }
 
+/// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
 pub struct FileHeaderParser;
 
 impl FileHeaderParser {
@@ -397,7 +404,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
     }
 }
 
-pub fn expect_bytes<'a>(expected: &'static [u8]) -> impl Parser<'a, &'a [u8], Vec<u8>> {
+fn expect_bytes<'a>(expected: &'static [u8]) -> impl Parser<'a, &'a [u8], Vec<u8>> {
     move |input: &'a [u8]| {
         let preparse_input = input;
         let expected_len = expected.len();
@@ -410,7 +417,7 @@ pub fn expect_bytes<'a>(expected: &'static [u8]) -> impl Parser<'a, &'a [u8], Ve
     }
 }
 
-pub fn expect_u16<'a>(expected: u16) -> impl Parser<'a, &'a [u8], u16> {
+fn expect_u16<'a>(expected: u16) -> impl Parser<'a, &'a [u8], u16> {
     move |input: &'a [u8]| {
         let preparse_input = input;
         let next: Vec<u8> = input.iter().take(2).copied().collect();

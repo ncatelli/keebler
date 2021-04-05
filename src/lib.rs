@@ -404,6 +404,9 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
     }
 }
 
+/// Matches a single provided static byte array, returning a match if the next
+/// bytes in the array match the expected byte array. Otherwise, a `NoMatch` is
+/// returned.
 fn expect_bytes<'a>(expected: &'static [u8]) -> impl Parser<'a, &'a [u8], Vec<u8>> {
     move |input: &'a [u8]| {
         let preparse_input = input;
@@ -417,6 +420,9 @@ fn expect_bytes<'a>(expected: &'static [u8]) -> impl Parser<'a, &'a [u8], Vec<u8
     }
 }
 
+/// Matches a single provided static u16, returning a match if the next
+/// two bytes in the array match the expected u16. Otherwise, a `NoMatch` is
+/// returned.
 fn expect_u16<'a>(expected: u16) -> impl Parser<'a, &'a [u8], u16> {
     move |input: &'a [u8]| {
         let preparse_input = input;

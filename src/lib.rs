@@ -283,8 +283,10 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
             .try_into()
             .unwrap();
 
-        match u16::from_ne_bytes(mcode) {
-            0x00 => Some(Machine::None),
+        match u16::from_be_bytes(mcode) {
+            0x0000 => Some(Machine::None),
+            0x0003 => Some(Machine::X386),
+            0x003e => Some(Machine::X86_64),
             _ => None,
         }
         .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
@@ -391,16 +393,15 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
-        Ok(MatchStatus::Match((
-            &input[16..],
-            FileHeader {
+        parcel::join(TypeParser, MachineParser)
+            .map(move |(r#type, machine)| FileHeader {
                 ei_ident,
-                r#type: Type::None,
-                machine: Machine::X86_64,
+                r#type,
+                machine,
                 version: Version::One,
                 entry_point: EntryPoint::SixtyFour(0),
-            },
-        )))
+            })
+            .parse(&input[16..])
     }
 }
 
@@ -466,7 +467,7 @@ mod tests {
     fn parse_known_good_header() {
         let input = [
             0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x03,
         ];
 
         assert_eq!(
@@ -480,7 +481,7 @@ mod tests {
                     ei_abiversion: EIABIVersion::One,
                 },
                 r#type: Type::None,
-                machine: Machine::X86_64,
+                machine: Machine::X386,
                 version: Version::One,
                 entry_point: EntryPoint::SixtyFour(0),
             }

@@ -283,7 +283,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
             .try_into()
             .unwrap();
 
-        match u16::from_be_bytes(mcode) {
+        match u16::from_ne_bytes(mcode) {
             0x0000 => Some(Machine::None),
             0x0003 => Some(Machine::X386),
             0x003e => Some(Machine::X86_64),
@@ -467,7 +467,7 @@ mod tests {
     fn parse_known_good_header() {
         let input = [
             0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x03,
+            0x00, 0x00, 0x00, 0x00, 0x03, 0x00,
         ];
 
         assert_eq!(

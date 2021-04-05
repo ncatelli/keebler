@@ -274,24 +274,67 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
         use std::convert::TryInto;
         let preparse_input = input;
 
-        // Should be safe to unwrap.
-        let mcode = input
+        input
             .iter()
             .take(2)
             .copied()
             .collect::<Vec<u8>>()
             .try_into()
-            .unwrap();
-
-        match u16::from_ne_bytes(mcode) {
-            0x0000 => Some(Machine::None),
-            0x0003 => Some(Machine::X386),
-            0x003e => Some(Machine::X86_64),
-            _ => None,
-        }
-        .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
-            Ok(MatchStatus::Match((&preparse_input[2..], m)))
-        })
+            .map(|mcode| match u16::from_ne_bytes(mcode) {
+                0x00 => Some(Machine::None),
+                0x01 => Some(Machine::M32),
+                0x02 => Some(Machine::SPARC),
+                0x03 => Some(Machine::X386),
+                0x04 => Some(Machine::M68k),
+                0x05 => Some(Machine::M88k),
+                0x06 => Some(Machine::IntelMCU),
+                0x07 => Some(Machine::Intel80860),
+                0x08 => Some(Machine::MIPS),
+                0x09 => Some(Machine::S370),
+                0x0A => Some(Machine::MIPSRS3LE),
+                0x0E => Some(Machine::PARISC),
+                0x13 => Some(Machine::I960),
+                0x14 => Some(Machine::PPC),
+                0x15 => Some(Machine::PPC64),
+                0x16 => Some(Machine::S390),
+                0x24 => Some(Machine::V800),
+                0x25 => Some(Machine::FR20),
+                0x26 => Some(Machine::RH32),
+                0x27 => Some(Machine::RCE),
+                0x28 => Some(Machine::ARM),
+                0x29 => Some(Machine::Alpha),
+                0x2A => Some(Machine::SH),
+                0x2B => Some(Machine::SPARCV9),
+                0x2C => Some(Machine::Tricore),
+                0x2D => Some(Machine::ARC),
+                0x2E => Some(Machine::H8300),
+                0x2F => Some(Machine::H8_300H),
+                0x30 => Some(Machine::H8s),
+                0x31 => Some(Machine::H8500),
+                0x32 => Some(Machine::IA64),
+                0x33 => Some(Machine::MIPSX),
+                0x34 => Some(Machine::Coldfire),
+                0x35 => Some(Machine::M68HC12),
+                0x36 => Some(Machine::MMA),
+                0x37 => Some(Machine::PCP),
+                0x38 => Some(Machine::NCPU),
+                0x39 => Some(Machine::NDR1),
+                0x3a => Some(Machine::Starcore),
+                0x3B => Some(Machine::ME16),
+                0x3C => Some(Machine::ST100),
+                0x3D => Some(Machine::TinyJ),
+                0x3e => Some(Machine::X86_64),
+                0x8C => Some(Machine::S320C600),
+                0xB9 => Some(Machine::AARCH64),
+                0xFa => Some(Machine::RISCV),
+                0xFB => Some(Machine::BPF),
+                0x101 => Some(Machine::WDC65C817),
+                _ => None,
+            })
+            .unwrap()
+            .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
+                Ok(MatchStatus::Match((&preparse_input[2..], m)))
+            })
     }
 }
 

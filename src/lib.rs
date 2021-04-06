@@ -660,7 +660,6 @@ fn match_u32<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u32> {
 
     parcel::take_n(any_byte(), 4).map(move |b| {
         b.try_into()
-            .map(|b| b)
             .map(|ep| match endianness {
                 EIData::Little => u32::from_le_bytes(ep),
                 EIData::Big => u32::from_be_bytes(ep),

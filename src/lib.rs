@@ -18,6 +18,8 @@ impl std::fmt::Debug for FileErr {
     }
 }
 
+/// EIClass contains a 1-byte value representing whether a type is 32 or 64-bit
+/// respectively.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EIClass {
@@ -43,6 +45,8 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIClass> for EIClassParser {
     }
 }
 
+/// EIData stores a 1-byte value representing if the header is in little-endian
+/// or big-endian format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EIData {
@@ -68,6 +72,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIData> for EIDataParser {
     }
 }
 
+/// EIVersion represents which version of ELF header is being used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EIVersion {
@@ -89,6 +94,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIVersion> for EIVersionParser {
     }
 }
 
+/// EIOSABI represents the target systems ABI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EIOSABI {
@@ -146,6 +152,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIOSABI> for EIOSABIParser {
     }
 }
 
+/// EIABIVersion represents the abi version and is often left null.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EIABIVersion {
@@ -380,7 +387,7 @@ pub struct EIIdent {
 }
 
 /// EIIdentParser defines a parser for parsing a raw bitstream into an EIIdent.
-pub struct EIIdentParser;
+struct EIIdentParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EIIdent> for EIIdentParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIIdent> {
@@ -631,6 +638,7 @@ fn expect_u32<'a>(endianness: EIData, expected: u32) -> impl Parser<'a, &'a [u8]
     }
 }
 
+/// Matches any given u16 by endianness returning a corresponding u16 value.
 fn match_u16<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u16> {
     use parcel::parsers::byte::any_byte;
     use std::convert::TryInto;
@@ -645,6 +653,7 @@ fn match_u16<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u16> {
     })
 }
 
+/// Matches any given u32 by endianness returning a corresponding u32 value.
 fn match_u32<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u32> {
     use parcel::parsers::byte::any_byte;
     use std::convert::TryInto;
@@ -660,6 +669,7 @@ fn match_u32<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u32> {
     })
 }
 
+/// Matches any given u64 by endianness returning a corresponding u64 value.
 fn match_u64<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u64> {
     use parcel::parsers::byte::any_byte;
     use std::convert::TryInto;

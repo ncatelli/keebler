@@ -20,7 +20,7 @@ impl std::fmt::Debug for FileErr {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-enum EIClass {
+pub enum EIClass {
     ThirtyTwoBit = 0x01,
     SixtyFourBit = 0x02,
 }
@@ -45,7 +45,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIClass> for EIClassParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-enum EIData {
+pub enum EIData {
     Little = 0x01,
     Big = 0x02,
 }
@@ -70,7 +70,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIData> for EIDataParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-enum EIVersion {
+pub enum EIVersion {
     One = 1,
 }
 
@@ -79,7 +79,6 @@ impl From<EIVersion> for u8 {
         src as u8
     }
 }
-
 struct EIVersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EIVersion> for EIVersionParser {
@@ -92,7 +91,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIVersion> for EIVersionParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-enum EIOSABI {
+pub enum EIOSABI {
     SysV = 0x00,
     HPUX = 0x01,
     NetBSD = 0x02,
@@ -149,7 +148,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIOSABI> for EIOSABIParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-enum EIABIVersion {
+pub enum EIABIVersion {
     Zero = 0x00,
     One = 0x01,
 }
@@ -192,20 +191,21 @@ impl From<Type> for u16 {
     }
 }
 
-struct TypeParser;
+struct TypeParser(EIData);
 
 impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
+        let class = self.0;
         parcel::one_of(vec![
-            expect_u16(Type::None as u16).map(|_| Type::None),
-            expect_u16(Type::Rel as u16).map(|_| Type::Rel),
-            expect_u16(Type::Exec as u16).map(|_| Type::Exec),
-            expect_u16(Type::Dyn as u16).map(|_| Type::Dyn),
-            expect_u16(Type::Core as u16).map(|_| Type::Core),
-            expect_u16(Type::LOOS as u16).map(|_| Type::LOOS),
-            expect_u16(Type::HIOS as u16).map(|_| Type::HIOS),
-            expect_u16(Type::LOPROC as u16).map(|_| Type::LOPROC),
-            expect_u16(Type::HIPROC as u16).map(|_| Type::HIPROC),
+            expect_u16(class, Type::None as u16).map(|_| Type::None),
+            expect_u16(class, Type::Rel as u16).map(|_| Type::Rel),
+            expect_u16(class, Type::Exec as u16).map(|_| Type::Exec),
+            expect_u16(class, Type::Dyn as u16).map(|_| Type::Dyn),
+            expect_u16(class, Type::Core as u16).map(|_| Type::Core),
+            expect_u16(class, Type::LOOS as u16).map(|_| Type::LOOS),
+            expect_u16(class, Type::HIOS as u16).map(|_| Type::HIOS),
+            expect_u16(class, Type::LOPROC as u16).map(|_| Type::LOPROC),
+            expect_u16(class, Type::HIPROC as u16).map(|_| Type::HIPROC),
         ])
         .parse(input)
     }
@@ -353,13 +353,11 @@ impl From<Version> for u32 {
     }
 }
 
-struct VersionParser;
+struct VersionParser(EIData);
 
 impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Version> {
-        expect_byte(Version::One as u8)
-            .map(|_| Version::One)
-            .parse(input)
+        expect_u32(self.0, 0x01).map(|_| Version::One).parse(input)
     }
 }
 
@@ -367,11 +365,11 @@ impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
 /// EIIdent defines the elf identification fields that define whether the
 /// address size, versions and abi of the file.
 pub struct EIIdent {
-    ei_class: EIClass,
-    ei_data: EIData,
-    ei_version: EIVersion,
-    ei_osabi: EIOSABI,
-    ei_abiversion: EIABIVersion,
+    pub ei_class: EIClass,
+    pub ei_data: EIData,
+    pub ei_version: EIVersion,
+    pub ei_osabi: EIOSABI,
+    pub ei_abiversion: EIABIVersion,
 }
 
 /// EIIdentParser defines a parser for parsing a raw bitstream into an EIIdent.
@@ -473,18 +471,21 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<ELF32Addr>> for FileHeaderParse
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
         parcel::join(
-            TypeParser,
+            TypeParser(ei_ident.ei_data),
             parcel::join(
                 MachineParser,
                 parcel::join(
-                    VersionParser,
+                    VersionParser(ei_ident.ei_data),
                     parcel::join(
-                        match_u32(),
+                        match_u32(ei_ident.ei_data),
                         parcel::join(
-                            match_u32(),
+                            match_u32(ei_ident.ei_data),
                             parcel::join(
-                                match_u32(),
-                                parcel::join(match_u32(), parcel::take_n(match_u16(), 6)),
+                                match_u32(ei_ident.ei_data),
+                                parcel::join(
+                                    match_u32(ei_ident.ei_data),
+                                    parcel::take_n(match_u16(ei_ident.ei_data), 6),
+                                ),
                             ),
                         ),
                     ),
@@ -526,18 +527,21 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<ELF64Addr>> for FileHeaderParse
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
         parcel::join(
-            TypeParser,
+            TypeParser(ei_ident.ei_data),
             parcel::join(
                 MachineParser,
                 parcel::join(
-                    VersionParser,
+                    VersionParser(ei_ident.ei_data),
                     parcel::join(
-                        match_u64(),
+                        match_u64(ei_ident.ei_data),
                         parcel::join(
-                            match_u64(),
+                            match_u64(ei_ident.ei_data),
                             parcel::join(
-                                match_u64(),
-                                parcel::join(match_u32(), parcel::take_n(match_u16(), 6)),
+                                match_u64(ei_ident.ei_data),
+                                parcel::join(
+                                    match_u32(ei_ident.ei_data),
+                                    parcel::take_n(match_u16(ei_ident.ei_data), 6),
+                                ),
                             ),
                         ),
                     ),
@@ -593,37 +597,74 @@ fn expect_bytes<'a>(expected: &'static [u8]) -> impl Parser<'a, &'a [u8], Vec<u8
 /// Matches a single provided static u16, returning a match if the next
 /// two bytes in the array match the expected u16. Otherwise, a `NoMatch` is
 /// returned.
-fn expect_u16<'a>(expected: u16) -> impl Parser<'a, &'a [u8], u16> {
+fn expect_u16<'a>(endianness: EIData, expected: u16) -> impl Parser<'a, &'a [u8], u16> {
     move |input: &'a [u8]| {
         let preparse_input = input;
-        let next: Vec<u8> = input.iter().take(2).copied().collect();
-        if next == expected.to_ne_bytes() {
-            Ok(MatchStatus::Match((&input[2..], expected)))
-        } else {
-            Ok(MatchStatus::NoMatch(preparse_input))
+        match match_u16(endianness).parse(input) {
+            Ok(MatchStatus::Match((rem, v))) if v == expected => {
+                Ok(MatchStatus::Match((rem, expected)))
+            }
+            _ => Ok(MatchStatus::NoMatch(preparse_input)),
         }
     }
 }
 
-fn match_u16<'a>() -> impl Parser<'a, &'a [u8], u16> {
-    use parcel::parsers::byte::any_byte;
-    use std::convert::TryInto;
-
-    parcel::take_n(any_byte(), 2).map(|b| b.try_into().map(|ep| u16::from_be_bytes(ep)).unwrap())
+/// Matches a single provided static u16, returning a match if the next
+/// two bytes in the array match the expected u16. Otherwise, a `NoMatch` is
+/// returned.
+fn expect_u32<'a>(endianness: EIData, expected: u32) -> impl Parser<'a, &'a [u8], u32> {
+    move |input: &'a [u8]| {
+        let preparse_input = input;
+        match match_u32(endianness).parse(input) {
+            Ok(MatchStatus::Match((rem, v))) if v == expected => {
+                Ok(MatchStatus::Match((rem, expected)))
+            }
+            _ => Ok(MatchStatus::NoMatch(preparse_input)),
+        }
+    }
 }
 
-fn match_u32<'a>() -> impl Parser<'a, &'a [u8], u32> {
+fn match_u16<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u16> {
     use parcel::parsers::byte::any_byte;
     use std::convert::TryInto;
 
-    parcel::take_n(any_byte(), 4).map(|b| b.try_into().map(|ep| u32::from_be_bytes(ep)).unwrap())
+    parcel::take_n(any_byte(), 2).map(move |b| {
+        b.try_into()
+            .map(|ep| match endianness {
+                EIData::Little => u16::from_le_bytes(ep),
+                EIData::Big => u16::from_be_bytes(ep),
+            })
+            .unwrap()
+    })
 }
 
-fn match_u64<'a>() -> impl Parser<'a, &'a [u8], u64> {
+fn match_u32<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u32> {
     use parcel::parsers::byte::any_byte;
     use std::convert::TryInto;
 
-    parcel::take_n(any_byte(), 8).map(|b| b.try_into().map(|ep| u64::from_be_bytes(ep)).unwrap())
+    parcel::take_n(any_byte(), 4).map(move |b| {
+        b.try_into()
+            .map(|b| b)
+            .map(|ep| match endianness {
+                EIData::Little => u32::from_le_bytes(ep),
+                EIData::Big => u32::from_be_bytes(ep),
+            })
+            .unwrap()
+    })
+}
+
+fn match_u64<'a>(endianness: EIData) -> impl Parser<'a, &'a [u8], u64> {
+    use parcel::parsers::byte::any_byte;
+    use std::convert::TryInto;
+
+    parcel::take_n(any_byte(), 8).map(move |b| {
+        b.try_into()
+            .map(|ep| match endianness {
+                EIData::Little => u64::from_le_bytes(ep),
+                EIData::Big => u64::from_be_bytes(ep),
+            })
+            .unwrap()
+    })
 }
 
 #[cfg(test)]
@@ -657,11 +698,27 @@ mod tests {
 
     #[test]
     fn parse_known_good_header() {
+        #[rustfmt::skip]
         let input: Vec<u8> = vec![
-            0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
-            0x0A, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
-            0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00,
+            0x7f, 0x45, 0x4c, 0x46, // magic
+            0x01, // ei_class
+            0x01, // ei_data
+            0x01, // ei_version
+            0x00, // ei_osabi
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // padding 
+            0x00, 0x00, // type
+            0x03, 0x00, // machine
+            0x01, 0x00, 0x00, 0x00, //version
+            0x05, 0x00, 0x00, 0x00, // entry
+            0x0A, 0x00, 0x00, 0x00, // phoff
+            0x0B, 0x00, 0x00, 0x00, // shoff
+            0x02, 0x00, 0x00, 0x00, // flags
+            0x00, 0x00, // eh_size
+            0x01, 0x00, // phentsize
+            0x01, 0x00, // phnum
+            0x01, 0x00, // shentsize
+            0x01, 0x00, // shnum
+            0x01, 0x00, // shstrndx
         ];
 
         assert_eq!(

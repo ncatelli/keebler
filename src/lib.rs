@@ -609,8 +609,8 @@ fn expect_u16<'a>(endianness: EIData, expected: u16) -> impl Parser<'a, &'a [u8]
     }
 }
 
-/// Matches a single provided static u16, returning a match if the next
-/// two bytes in the array match the expected u16. Otherwise, a `NoMatch` is
+/// Matches a single provided static u32, returning a match if the next
+/// four bytes in the array match the expected u32. Otherwise, a `NoMatch` is
 /// returned.
 fn expect_u32<'a>(endianness: EIData, expected: u32) -> impl Parser<'a, &'a [u8], u32> {
     move |input: &'a [u8]| {

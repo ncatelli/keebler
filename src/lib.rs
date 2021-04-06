@@ -1,3 +1,4 @@
+use parcel::parsers::byte::expect_byte;
 use parcel::prelude::v1::*;
 
 // Type Metadata
@@ -35,10 +36,8 @@ struct EIClassParser;
 impl<'a> parcel::Parser<'a, &'a [u8], EIClass> for EIClassParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIClass> {
         parcel::one_of(vec![
-            parcel::parsers::byte::expect_byte(EIClass::ThirtyTwoBit as u8)
-                .map(|_| EIClass::ThirtyTwoBit),
-            parcel::parsers::byte::expect_byte(EIClass::SixtyFourBit as u8)
-                .map(|_| EIClass::SixtyFourBit),
+            expect_byte(EIClass::ThirtyTwoBit as u8).map(|_| EIClass::ThirtyTwoBit),
+            expect_byte(EIClass::SixtyFourBit as u8).map(|_| EIClass::SixtyFourBit),
         ])
         .parse(input)
     }
@@ -62,8 +61,8 @@ struct EIDataParser;
 impl<'a> parcel::Parser<'a, &'a [u8], EIData> for EIDataParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIData> {
         parcel::one_of(vec![
-            parcel::parsers::byte::expect_byte(EIData::Little as u8).map(|_| EIData::Little),
-            parcel::parsers::byte::expect_byte(EIData::Big as u8).map(|_| EIData::Big),
+            expect_byte(EIData::Little as u8).map(|_| EIData::Little),
+            expect_byte(EIData::Big as u8).map(|_| EIData::Big),
         ])
         .parse(input)
     }
@@ -85,7 +84,7 @@ struct EIVersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EIVersion> for EIVersionParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIVersion> {
-        parcel::parsers::byte::expect_byte(EIVersion::One as u8)
+        expect_byte(EIVersion::One as u8)
             .map(|_| EIVersion::One)
             .parse(input)
     }
@@ -124,7 +123,6 @@ struct EIOSABIParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EIOSABI> for EIOSABIParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIOSABI> {
-        use parcel::parsers::byte::expect_byte;
         parcel::one_of(vec![
             expect_byte(EIOSABI::SysV as u8).map(|_| EIOSABI::SysV),
             expect_byte(EIOSABI::HPUX as u8).map(|_| EIOSABI::HPUX),
@@ -166,7 +164,6 @@ struct EIABIVersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EIABIVersion> for EIABIVersionParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIABIVersion> {
-        use parcel::parsers::byte::expect_byte;
         parcel::one_of(vec![
             expect_byte(EIABIVersion::Zero as u8).map(|_| EIABIVersion::Zero),
             expect_byte(EIABIVersion::One as u8).map(|_| EIABIVersion::One),
@@ -360,28 +357,9 @@ struct VersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Version> {
-        parcel::parsers::byte::expect_byte(Version::One as u8)
+        expect_byte(Version::One as u8)
             .map(|_| Version::One)
             .parse(input)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AddressOffset {
-    ThirtyTwoBit(u32),
-    SixtyFourBit(u64),
-}
-
-struct AddressOffsetParser(EIClass);
-
-impl<'a> parcel::Parser<'a, &'a [u8], AddressOffset> for AddressOffsetParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], AddressOffset> {
-        let class = self.0;
-        match class {
-            EIClass::ThirtyTwoBit => match_u32().map(|ep| AddressOffset::ThirtyTwoBit(ep)),
-            EIClass::SixtyFourBit => match_u64().map(|ep| AddressOffset::SixtyFourBit(ep)),
-        }
-        .parse(input)
     }
 }
 

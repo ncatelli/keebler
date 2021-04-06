@@ -1,5 +1,9 @@
 use parcel::prelude::v1::*;
 
+// Type Metadata
+type ELF32Addr = u32;
+type ELF64Addr = u64;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FileErr {
     InvalidFile,
@@ -431,14 +435,14 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIIdent> for EIIdentParser {
 /// FileHeader represents a program file header, and contains ELF identifaction
 /// information along with sizing, architechture and additional metadata about
 /// other ELF headers.
-pub struct FileHeader {
+pub struct FileHeader<AddrWidth> {
     ei_ident: EIIdent,
     r#type: Type,
     machine: Machine,
     version: Version,
-    entry_point: AddressOffset,
-    ph_offset: AddressOffset,
-    sh_offset: AddressOffset,
+    entry_point: AddrWidth,
+    ph_offset: AddrWidth,
+    sh_offset: AddrWidth,
     flags: u32,
     eh_size: u16,
     phent_size: u16,
@@ -449,9 +453,29 @@ pub struct FileHeader {
 }
 
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
-pub struct FileHeaderParser;
+pub struct FileHeaderParser<A> {
+    address_width: std::marker::PhantomData<A>,
+}
 
-impl FileHeaderParser {
+impl FileHeaderParser<u32> {
+    #[allow(dead_code)]
+    fn new() -> Self {
+        Self {
+            address_width: std::marker::PhantomData,
+        }
+    }
+}
+
+impl FileHeaderParser<u64> {
+    #[allow(dead_code)]
+    fn new() -> Self {
+        Self {
+            address_width: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<A> FileHeaderParser<A> {
     /// identifier parses the elf magic bytes and class, returning the class if
     /// the elf file has a valid preamble.
     pub fn identifier(input: &[u8]) -> Result<EIIdent, FileErr> {
@@ -466,8 +490,8 @@ impl FileHeaderParser {
     }
 }
 
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader> {
+impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<ELF32Addr>> for FileHeaderParser<ELF32Addr> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<ELF32Addr>> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
         parcel::join(
@@ -477,11 +501,64 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
                 parcel::join(
                     VersionParser,
                     parcel::join(
-                        AddressOffsetParser(ei_ident.ei_class),
+                        match_u32(),
                         parcel::join(
-                            AddressOffsetParser(ei_ident.ei_class),
+                            match_u32(),
                             parcel::join(
-                                AddressOffsetParser(ei_ident.ei_class),
+                                match_u32(),
+                                parcel::join(match_u32(), parcel::take_n(match_u16(), 6)),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        .map(
+            move |(
+                r#type,
+                (
+                    machine,
+                    (version, (entry_point, (ph_offset, (sh_offset, (flags, two_byte_fields))))),
+                ),
+            )| {
+                FileHeader {
+                    ei_ident,
+                    r#type,
+                    machine,
+                    version,
+                    entry_point,
+                    ph_offset,
+                    sh_offset,
+                    flags,
+                    eh_size: two_byte_fields[0],
+                    phent_size: two_byte_fields[1],
+                    phnum: two_byte_fields[2],
+                    shent_size: two_byte_fields[3],
+                    shnum: two_byte_fields[4],
+                    shstrndx: two_byte_fields[5],
+                }
+            },
+        )
+        .parse(&input[16..])
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<ELF64Addr>> for FileHeaderParser<ELF64Addr> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<ELF64Addr>> {
+        let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
+
+        parcel::join(
+            TypeParser,
+            parcel::join(
+                MachineParser,
+                parcel::join(
+                    VersionParser,
+                    parcel::join(
+                        match_u64(),
+                        parcel::join(
+                            match_u64(),
+                            parcel::join(
+                                match_u64(),
                                 parcel::join(match_u32(), parcel::take_n(match_u16(), 6)),
                             ),
                         ),
@@ -589,18 +666,20 @@ mod tests {
 
         assert_eq!(
             Ok(EIClass::ThirtyTwoBit),
-            FileHeaderParser::identifier(&thirty_two_bit_input).map(|ident| ident.ei_class)
+            FileHeaderParser::<ELF32Addr>::identifier(&thirty_two_bit_input)
+                .map(|ident| ident.ei_class)
         );
         assert_eq!(
             Ok(EIClass::SixtyFourBit),
-            FileHeaderParser::identifier(&sixty_four_bit_input).map(|ident| ident.ei_class)
+            FileHeaderParser::<ELF64Addr>::identifier(&sixty_four_bit_input)
+                .map(|ident| ident.ei_class)
         );
-        assert!(FileHeaderParser::identifier(&invalid_input).is_err());
+        assert!(FileHeaderParser::<ELF64Addr>::identifier(&invalid_input).is_err());
     }
 
     #[test]
     fn parse_known_good_header() {
-        let input = [
+        let input: Vec<u8> = vec![
             0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
             0x0A, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
@@ -608,8 +687,11 @@ mod tests {
         ];
 
         assert_eq!(
-            FileHeaderParser.parse(&input).unwrap().unwrap(),
-            FileHeader {
+            FileHeaderParser::<ELF32Addr>::new()
+                .parse(&input)
+                .unwrap()
+                .unwrap(),
+            FileHeader::<u32> {
                 ei_ident: EIIdent {
                     ei_class: EIClass::ThirtyTwoBit,
                     ei_data: EIData::Little,
@@ -620,9 +702,9 @@ mod tests {
                 r#type: Type::None,
                 machine: Machine::X386,
                 version: Version::One,
-                entry_point: AddressOffset::ThirtyTwoBit(5),
-                ph_offset: AddressOffset::ThirtyTwoBit(10),
-                sh_offset: AddressOffset::ThirtyTwoBit(11),
+                entry_point: 5u32,
+                ph_offset: 10u32,
+                sh_offset: 11u32,
                 flags: 2,
                 eh_size: 0,
                 phent_size: 1,

@@ -16,8 +16,8 @@ impl std::fmt::Debug for FileErr {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EIClass {
-    ThirtyTwo = 0x01,
-    SixtyFour = 0x02,
+    ThirtyTwoBit = 0x01,
+    SixtyFourBit = 0x02,
 }
 
 impl From<EIClass> for u8 {
@@ -31,10 +31,10 @@ struct EIClassParser;
 impl<'a> parcel::Parser<'a, &'a [u8], EIClass> for EIClassParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIClass> {
         parcel::one_of(vec![
-            parcel::parsers::byte::expect_byte(EIClass::ThirtyTwo as u8)
-                .map(|_| EIClass::ThirtyTwo),
-            parcel::parsers::byte::expect_byte(EIClass::SixtyFour as u8)
-                .map(|_| EIClass::SixtyFour),
+            parcel::parsers::byte::expect_byte(EIClass::ThirtyTwoBit as u8)
+                .map(|_| EIClass::ThirtyTwoBit),
+            parcel::parsers::byte::expect_byte(EIClass::SixtyFourBit as u8)
+                .map(|_| EIClass::SixtyFourBit),
         ])
         .parse(input)
     }
@@ -363,35 +363,19 @@ impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EntryPoint {
-    ThirtyTwo(u32),
-    SixtyFour(u64),
+pub enum AddressOffset {
+    ThirtyTwoBit(u32),
+    SixtyFourBit(u64),
 }
 
-struct EntryPointParser(EIClass);
+struct AddressOffsetParser(EIClass);
 
-impl<'a> parcel::Parser<'a, &'a [u8], EntryPoint> for EntryPointParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EntryPoint> {
-        use parcel::parsers::byte::any_byte;
-        use std::convert::TryInto;
-
+impl<'a> parcel::Parser<'a, &'a [u8], AddressOffset> for AddressOffsetParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], AddressOffset> {
         let class = self.0;
         match class {
-            EIClass::ThirtyTwo => parcel::take_n(any_byte(), 4).map(|b| {
-                b.try_into()
-                    .map(|ep| {
-                        println!("{:?}", &ep);
-                        u32::from_be_bytes(ep)
-                    })
-                    .map(|ep| EntryPoint::ThirtyTwo(ep))
-                    .unwrap()
-            }),
-            EIClass::SixtyFour => parcel::take_n(any_byte(), 8).map(|b| {
-                b.try_into()
-                    .map(|ep| u64::from_be_bytes(ep))
-                    .map(|ep| EntryPoint::SixtyFour(ep))
-                    .unwrap()
-            }),
+            EIClass::ThirtyTwoBit => match_u32().map(|ep| AddressOffset::ThirtyTwoBit(ep)),
+            EIClass::SixtyFourBit => match_u64().map(|ep| AddressOffset::SixtyFourBit(ep)),
         }
         .parse(input)
     }
@@ -452,7 +436,16 @@ pub struct FileHeader {
     r#type: Type,
     machine: Machine,
     version: Version,
-    entry_point: EntryPoint,
+    entry_point: AddressOffset,
+    ph_offset: AddressOffset,
+    sh_offset: AddressOffset,
+    flags: u32,
+    eh_size: u16,
+    phent_size: u16,
+    phnum: u16,
+    shent_size: u16,
+    shnum: u16,
+    shstrndx: u16,
 }
 
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
@@ -481,16 +474,45 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader> for FileHeaderParser {
             TypeParser,
             parcel::join(
                 MachineParser,
-                parcel::join(VersionParser, EntryPointParser(ei_ident.ei_class)),
+                parcel::join(
+                    VersionParser,
+                    parcel::join(
+                        AddressOffsetParser(ei_ident.ei_class),
+                        parcel::join(
+                            AddressOffsetParser(ei_ident.ei_class),
+                            parcel::join(
+                                AddressOffsetParser(ei_ident.ei_class),
+                                parcel::join(match_u32(), parcel::take_n(match_u16(), 6)),
+                            ),
+                        ),
+                    ),
+                ),
             ),
         )
         .map(
-            move |(r#type, (machine, (version, entry_point)))| FileHeader {
-                ei_ident,
+            move |(
                 r#type,
-                machine,
-                version,
-                entry_point,
+                (
+                    machine,
+                    (version, (entry_point, (ph_offset, (sh_offset, (flags, two_byte_fields))))),
+                ),
+            )| {
+                FileHeader {
+                    ei_ident,
+                    r#type,
+                    machine,
+                    version,
+                    entry_point,
+                    ph_offset,
+                    sh_offset,
+                    flags,
+                    eh_size: two_byte_fields[0],
+                    phent_size: two_byte_fields[1],
+                    phnum: two_byte_fields[2],
+                    shent_size: two_byte_fields[3],
+                    shnum: two_byte_fields[4],
+                    shstrndx: two_byte_fields[5],
+                }
             },
         )
         .parse(&input[16..])
@@ -528,6 +550,27 @@ fn expect_u16<'a>(expected: u16) -> impl Parser<'a, &'a [u8], u16> {
     }
 }
 
+fn match_u16<'a>() -> impl Parser<'a, &'a [u8], u16> {
+    use parcel::parsers::byte::any_byte;
+    use std::convert::TryInto;
+
+    parcel::take_n(any_byte(), 2).map(|b| b.try_into().map(|ep| u16::from_be_bytes(ep)).unwrap())
+}
+
+fn match_u32<'a>() -> impl Parser<'a, &'a [u8], u32> {
+    use parcel::parsers::byte::any_byte;
+    use std::convert::TryInto;
+
+    parcel::take_n(any_byte(), 4).map(|b| b.try_into().map(|ep| u32::from_be_bytes(ep)).unwrap())
+}
+
+fn match_u64<'a>() -> impl Parser<'a, &'a [u8], u64> {
+    use parcel::parsers::byte::any_byte;
+    use std::convert::TryInto;
+
+    parcel::take_n(any_byte(), 8).map(|b| b.try_into().map(|ep| u64::from_be_bytes(ep)).unwrap())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -545,11 +588,11 @@ mod tests {
         let invalid_input = [0xff, 0xff, 0xff, 0xff, 0xff];
 
         assert_eq!(
-            Ok(EIClass::ThirtyTwo),
+            Ok(EIClass::ThirtyTwoBit),
             FileHeaderParser::identifier(&thirty_two_bit_input).map(|ident| ident.ei_class)
         );
         assert_eq!(
-            Ok(EIClass::SixtyFour),
+            Ok(EIClass::SixtyFourBit),
             FileHeaderParser::identifier(&sixty_four_bit_input).map(|ident| ident.ei_class)
         );
         assert!(FileHeaderParser::identifier(&invalid_input).is_err());
@@ -560,13 +603,15 @@ mod tests {
         let input = [
             0x7f, 0x45, 0x4c, 0x46, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
+            0x0A, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
+            0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00,
         ];
 
         assert_eq!(
             FileHeaderParser.parse(&input).unwrap().unwrap(),
             FileHeader {
                 ei_ident: EIIdent {
-                    ei_class: EIClass::ThirtyTwo,
+                    ei_class: EIClass::ThirtyTwoBit,
                     ei_data: EIData::Little,
                     ei_version: EIVersion::One,
                     ei_osabi: EIOSABI::SysV,
@@ -575,7 +620,16 @@ mod tests {
                 r#type: Type::None,
                 machine: Machine::X386,
                 version: Version::One,
-                entry_point: EntryPoint::ThirtyTwo(5),
+                entry_point: AddressOffset::ThirtyTwoBit(5),
+                ph_offset: AddressOffset::ThirtyTwoBit(10),
+                sh_offset: AddressOffset::ThirtyTwoBit(11),
+                flags: 2,
+                eh_size: 0,
+                phent_size: 1,
+                phnum: 1,
+                shent_size: 1,
+                shnum: 1,
+                shstrndx: 1
             }
         )
     }

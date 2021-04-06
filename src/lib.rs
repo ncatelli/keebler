@@ -20,7 +20,7 @@ impl std::fmt::Debug for FileErr {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EIClass {
+enum EIClass {
     ThirtyTwoBit = 0x01,
     SixtyFourBit = 0x02,
 }
@@ -45,7 +45,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIClass> for EIClassParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EIData {
+enum EIData {
     Little = 0x01,
     Big = 0x02,
 }
@@ -70,7 +70,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIData> for EIDataParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EIVersion {
+enum EIVersion {
     One = 1,
 }
 
@@ -92,7 +92,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIVersion> for EIVersionParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EIOSABI {
+enum EIOSABI {
     SysV = 0x00,
     HPUX = 0x01,
     NetBSD = 0x02,
@@ -149,7 +149,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIOSABI> for EIOSABIParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EIABIVersion {
+enum EIABIVersion {
     Zero = 0x00,
     One = 0x01,
 }
@@ -174,7 +174,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIABIVersion> for EIABIVersionParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-pub enum Type {
+enum Type {
     None = 0x00,
     Rel = 0x01,
     Exec = 0x02,
@@ -213,7 +213,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-pub enum Machine {
+enum Machine {
     None = 0x00,
     M32 = 0x01,
     SPARC = 0x02,
@@ -343,7 +343,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
-pub enum Version {
+enum Version {
     One = 0x01,
 }
 

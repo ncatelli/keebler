@@ -72,6 +72,8 @@ impl From<BigEndianDataEncoding> for EiData {
     }
 }
 
+/// DataEncoding is a 0 method trait that is used for implementing a
+/// genericized Endianness encoding
 pub trait DataEncoding {}
 
 /// UnknownDataEncoding is an explicit type for specifying that the data
@@ -128,10 +130,11 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiVersion> for EiVersionParser {
     }
 }
 
-/// EiOSABI represents the target systems ABI.
+/// EiOsAbi represents the target systems ABI.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EiOSABI {
+pub enum EiOsAbi {
     SysV = 0x00,
     HPUX = 0x01,
     NetBSD = 0x02,
@@ -152,35 +155,35 @@ pub enum EiOSABI {
     OpenVOS = 0x12,
 }
 
-impl From<EiOSABI> for u8 {
-    fn from(src: EiOSABI) -> Self {
+impl From<EiOsAbi> for u8 {
+    fn from(src: EiOsAbi) -> Self {
         src as u8
     }
 }
 
-struct EiOSABIParser;
+struct EiOsAbiParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], EiOSABI> for EiOSABIParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiOSABI> {
+impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiOsAbi> {
         parcel::one_of(vec![
-            expect_byte(EiOSABI::SysV as u8).map(|_| EiOSABI::SysV),
-            expect_byte(EiOSABI::HPUX as u8).map(|_| EiOSABI::HPUX),
-            expect_byte(EiOSABI::NetBSD as u8).map(|_| EiOSABI::NetBSD),
-            expect_byte(EiOSABI::Linux as u8).map(|_| EiOSABI::Linux),
-            expect_byte(EiOSABI::GNUHurd as u8).map(|_| EiOSABI::GNUHurd),
-            expect_byte(EiOSABI::Solaris as u8).map(|_| EiOSABI::Solaris),
-            expect_byte(EiOSABI::AIX as u8).map(|_| EiOSABI::AIX),
-            expect_byte(EiOSABI::IRIX as u8).map(|_| EiOSABI::IRIX),
-            expect_byte(EiOSABI::FreeBSD as u8).map(|_| EiOSABI::FreeBSD),
-            expect_byte(EiOSABI::Tru64 as u8).map(|_| EiOSABI::Tru64),
-            expect_byte(EiOSABI::Novell as u8).map(|_| EiOSABI::Novell),
-            expect_byte(EiOSABI::OpenBSD as u8).map(|_| EiOSABI::OpenBSD),
-            expect_byte(EiOSABI::OpenVMS as u8).map(|_| EiOSABI::OpenVMS),
-            expect_byte(EiOSABI::NonStop as u8).map(|_| EiOSABI::NonStop),
-            expect_byte(EiOSABI::Aros as u8).map(|_| EiOSABI::Aros),
-            expect_byte(EiOSABI::Fenix as u8).map(|_| EiOSABI::Fenix),
-            expect_byte(EiOSABI::CloudABI as u8).map(|_| EiOSABI::CloudABI),
-            expect_byte(EiOSABI::OpenVOS as u8).map(|_| EiOSABI::OpenVOS),
+            expect_byte(EiOsAbi::SysV as u8).map(|_| EiOsAbi::SysV),
+            expect_byte(EiOsAbi::HPUX as u8).map(|_| EiOsAbi::HPUX),
+            expect_byte(EiOsAbi::NetBSD as u8).map(|_| EiOsAbi::NetBSD),
+            expect_byte(EiOsAbi::Linux as u8).map(|_| EiOsAbi::Linux),
+            expect_byte(EiOsAbi::GNUHurd as u8).map(|_| EiOsAbi::GNUHurd),
+            expect_byte(EiOsAbi::Solaris as u8).map(|_| EiOsAbi::Solaris),
+            expect_byte(EiOsAbi::AIX as u8).map(|_| EiOsAbi::AIX),
+            expect_byte(EiOsAbi::IRIX as u8).map(|_| EiOsAbi::IRIX),
+            expect_byte(EiOsAbi::FreeBSD as u8).map(|_| EiOsAbi::FreeBSD),
+            expect_byte(EiOsAbi::Tru64 as u8).map(|_| EiOsAbi::Tru64),
+            expect_byte(EiOsAbi::Novell as u8).map(|_| EiOsAbi::Novell),
+            expect_byte(EiOsAbi::OpenBSD as u8).map(|_| EiOsAbi::OpenBSD),
+            expect_byte(EiOsAbi::OpenVMS as u8).map(|_| EiOsAbi::OpenVMS),
+            expect_byte(EiOsAbi::NonStop as u8).map(|_| EiOsAbi::NonStop),
+            expect_byte(EiOsAbi::Aros as u8).map(|_| EiOsAbi::Aros),
+            expect_byte(EiOsAbi::Fenix as u8).map(|_| EiOsAbi::Fenix),
+            expect_byte(EiOsAbi::CloudABI as u8).map(|_| EiOsAbi::CloudABI),
+            expect_byte(EiOsAbi::OpenVOS as u8).map(|_| EiOsAbi::OpenVOS),
         ])
         .parse(input)
     }
@@ -189,24 +192,24 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiOSABI> for EiOSABIParser {
 /// EIABIVersion represents the abi version and is often left null.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EIABIVersion {
+pub enum EiAbiVersion {
     Zero = 0x00,
     One = 0x01,
 }
 
-impl From<EIABIVersion> for u8 {
-    fn from(src: EIABIVersion) -> Self {
+impl From<EiAbiVersion> for u8 {
+    fn from(src: EiAbiVersion) -> Self {
         src as u8
     }
 }
 
-struct EIABIVersionParser;
+struct EiAbiVersionParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], EIABIVersion> for EIABIVersionParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIABIVersion> {
+impl<'a> parcel::Parser<'a, &'a [u8], EiAbiVersion> for EiAbiVersionParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiAbiVersion> {
         parcel::one_of(vec![
-            expect_byte(EIABIVersion::Zero as u8).map(|_| EIABIVersion::Zero),
-            expect_byte(EIABIVersion::One as u8).map(|_| EIABIVersion::One),
+            expect_byte(EiAbiVersion::Zero as u8).map(|_| EiAbiVersion::Zero),
+            expect_byte(EiAbiVersion::One as u8).map(|_| EiAbiVersion::One),
         ])
         .parse(input)
     }
@@ -220,10 +223,10 @@ pub enum Type {
     Exec = 0x02,
     Dyn = 0x03,
     Core = 0x04,
-    LOOS = 0xFE00,
-    HIOS = 0xFEFF,
-    LOPROC = 0xFF00,
-    HIPROC = 0xFFFF,
+    LoOs = 0xFE00,
+    HiOs = 0xFEFF,
+    LoProc = 0xFF00,
+    HiProc = 0xFFFF,
 }
 
 impl From<Type> for u16 {
@@ -256,10 +259,10 @@ where
             expect_u16(data, Type::Exec as u16).map(|_| Type::Exec),
             expect_u16(data, Type::Dyn as u16).map(|_| Type::Dyn),
             expect_u16(data, Type::Core as u16).map(|_| Type::Core),
-            expect_u16(data, Type::LOOS as u16).map(|_| Type::LOOS),
-            expect_u16(data, Type::HIOS as u16).map(|_| Type::HIOS),
-            expect_u16(data, Type::LOPROC as u16).map(|_| Type::LOPROC),
-            expect_u16(data, Type::HIPROC as u16).map(|_| Type::HIPROC),
+            expect_u16(data, Type::LoOs as u16).map(|_| Type::LoOs),
+            expect_u16(data, Type::HiOs as u16).map(|_| Type::HiOs),
+            expect_u16(data, Type::LoProc as u16).map(|_| Type::LoProc),
+            expect_u16(data, Type::HiProc as u16).map(|_| Type::HiProc),
         ])
         .parse(input)
     }
@@ -277,6 +280,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<BigEndianDataEncoding
     }
 }
 
+#[allow(clippy::clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum Machine {
@@ -503,8 +507,8 @@ pub struct EiIdent {
     pub ei_class: EiClass,
     pub ei_data: EiData,
     pub ei_version: EiVersion,
-    pub ei_osabi: EiOSABI,
-    pub ei_abiversion: EIABIVersion,
+    pub ei_osabi: EiOsAbi,
+    pub ei_abiversion: EiAbiVersion,
 }
 
 /// EiIdentParser defines a parser for parsing a raw bitstream into an EiIdent.
@@ -520,7 +524,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
                     EiDataParser,
                     parcel::join(
                         EiVersionParser,
-                        parcel::join(EiOSABIParser, EIABIVersionParser),
+                        parcel::join(EiOsAbiParser, EiAbiVersionParser),
                     ),
                 ),
             )
@@ -895,8 +899,8 @@ mod tests {
                     ei_class: EiClass::ThirtyTwoBit,
                     ei_data: EiData::Little,
                     ei_version: EiVersion::One,
-                    ei_osabi: EiOSABI::SysV,
-                    ei_abiversion: EIABIVersion::One,
+                    ei_osabi: EiOsAbi::SysV,
+                    ei_abiversion: EiAbiVersion::One,
                 },
                 r#type: Type::None,
                 machine: Machine::X386,

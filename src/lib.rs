@@ -393,10 +393,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<LittleEndianDat
             .copied()
             .collect::<Vec<u8>>()
             .try_into()
-            .map(|mcode| {
-                let val = u16::from_le_bytes(mcode);
-                std::convert::TryFrom::try_from(val)
-            })
+            .map(|mcode| std::convert::TryFrom::try_from(u16::from_le_bytes(mcode)))
             .unwrap()
             .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
                 Ok(MatchStatus::Match((&preparse_input[2..], m)))
@@ -415,10 +412,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEn
             .copied()
             .collect::<Vec<u8>>()
             .try_into()
-            .map(|mcode| {
-                let val = u16::from_be_bytes(mcode);
-                std::convert::TryFrom::try_from(val)
-            })
+            .map(|mcode| std::convert::TryFrom::try_from(u16::from_be_bytes(mcode)))
             .unwrap()
             .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
                 Ok(MatchStatus::Match((&preparse_input[2..], m)))

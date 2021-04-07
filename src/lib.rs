@@ -837,6 +837,32 @@ fn match_u64<'a>(endianness: EiData) -> impl Parser<'a, &'a [u8], u64> {
 mod tests {
     use super::*;
 
+    macro_rules! generate_elf_header {
+        () => {
+            vec![
+                0x7f, 0x45, 0x4c, 0x46, // magic
+                0x01, // ei_class
+                0x01, // ei_data
+                0x01, // ei_version
+                0x00, // ei_osabi
+                0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // padding
+                0x00, 0x00, // type
+                0x03, 0x00, // machine
+                0x01, 0x00, 0x00, 0x00, //version
+                0x05, 0x00, 0x00, 0x00, // entry
+                0x0A, 0x00, 0x00, 0x00, // phoff
+                0x0B, 0x00, 0x00, 0x00, // shoff
+                0x02, 0x00, 0x00, 0x00, // flags
+                0x00, 0x00, // eh_size
+                0x01, 0x00, // phentsize
+                0x01, 0x00, // phnum
+                0x01, 0x00, // shentsize
+                0x01, 0x00, // shnum
+                0x01, 0x00, // shstrndx
+            ]
+        };
+    }
+
     #[test]
     fn parse_preamble_should_return_expected_results() {
         let thirty_two_bit_input = [
@@ -867,27 +893,7 @@ mod tests {
     #[test]
     fn parse_known_good_header() {
         #[rustfmt::skip]
-        let input: Vec<u8> = vec![
-            0x7f, 0x45, 0x4c, 0x46, // magic
-            0x01, // ei_class
-            0x01, // ei_data
-            0x01, // ei_version
-            0x00, // ei_osabi
-            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // padding 
-            0x00, 0x00, // type
-            0x03, 0x00, // machine
-            0x01, 0x00, 0x00, 0x00, //version
-            0x05, 0x00, 0x00, 0x00, // entry
-            0x0A, 0x00, 0x00, 0x00, // phoff
-            0x0B, 0x00, 0x00, 0x00, // shoff
-            0x02, 0x00, 0x00, 0x00, // flags
-            0x00, 0x00, // eh_size
-            0x01, 0x00, // phentsize
-            0x01, 0x00, // phnum
-            0x01, 0x00, // shentsize
-            0x01, 0x00, // shnum
-            0x01, 0x00, // shstrndx
-        ];
+        let input: Vec<u8> = generate_elf_header!();
 
         assert_eq!(
             FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()

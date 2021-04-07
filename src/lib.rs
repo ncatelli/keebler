@@ -60,21 +60,39 @@ impl From<EiData> for u8 {
     }
 }
 
+impl From<LittleEndianDataEncoding> for EiData {
+    fn from(_: LittleEndianDataEncoding) -> Self {
+        Self::Little
+    }
+}
+
+impl From<BigEndianDataEncoding> for EiData {
+    fn from(_: BigEndianDataEncoding) -> Self {
+        Self::Big
+    }
+}
+
+pub trait DataEncoding {}
+
 /// UnknownDataEncoding is an explicit type for specifying that the data
 /// encoding is unknown. This will typically be used when parsing the ident
 /// field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct UnknownDataEncoding;
+pub struct UnknownDataEncoding;
 
 /// LittleEndianDataEncoding is an explicit type for specifying that the data
 /// encoding is little-endian.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct LittleEndianDataEncoding;
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LittleEndianDataEncoding;
+
+impl DataEncoding for LittleEndianDataEncoding {}
 
 /// BigEndianDataEncoding is an explicit type for specifying that the data
 /// encoding is big-endian.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct BigEndianDataEncoding;
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BigEndianDataEncoding;
+
+impl DataEncoding for BigEndianDataEncoding {}
 
 struct EiDataParser;
 
@@ -196,7 +214,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EIABIVersion> for EIABIVersionParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-enum Type {
+pub enum Type {
     None = 0x00,
     Rel = 0x01,
     Exec = 0x02,
@@ -214,11 +232,17 @@ impl From<Type> for u16 {
     }
 }
 
-struct TypeParser<E> {
+pub struct TypeParser<E>
+where
+    E: DataEncoding,
+{
     endianness: std::marker::PhantomData<E>,
 }
 
-impl<'a, E> TypeParser<E> {
+impl<'a, E> TypeParser<E>
+where
+    E: DataEncoding,
+{
     fn new() -> Self {
         Self {
             endianness: std::marker::PhantomData,
@@ -255,7 +279,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<BigEndianDataEncoding
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-enum Machine {
+pub enum Machine {
     None = 0x00,
     M32 = 0x01,
     SPARC = 0x02,
@@ -370,11 +394,17 @@ impl std::convert::TryFrom<u16> for Machine {
     }
 }
 
-struct MachineParser<E> {
+pub struct MachineParser<E>
+where
+    E: DataEncoding,
+{
     endianness: std::marker::PhantomData<E>,
 }
 
-impl<E> MachineParser<E> {
+impl<E> MachineParser<E>
+where
+    E: DataEncoding,
+{
     fn new() -> Self {
         Self {
             endianness: std::marker::PhantomData,
@@ -422,7 +452,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEn
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
-enum Version {
+pub enum Version {
     One = 0x01,
 }
 
@@ -432,11 +462,17 @@ impl From<Version> for u32 {
     }
 }
 
-struct VersionParser<E> {
+pub struct VersionParser<E>
+where
+    E: DataEncoding,
+{
     endianness: std::marker::PhantomData<E>,
 }
 
-impl<E> VersionParser<E> {
+impl<E> VersionParser<E>
+where
+    E: DataEncoding,
+{
     fn new() -> Self {
         Self {
             endianness: std::marker::PhantomData,
@@ -568,81 +604,30 @@ impl<A, E> FileHeaderParser<A, E> {
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr, E> {
+impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    TypeParser<E>: Parser<'a, &'a [u8], Type>,
+    MachineParser<E>: Parser<'a, &'a [u8], Machine>,
+    VersionParser<E>: Parser<'a, &'a [u8], Version>,
+{
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf32Addr>> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
+        let encoding = EiData::from(E::default());
 
         parcel::join(
-            TypeParser::<LittleEndianDataEncoding>::new(),
+            TypeParser::<E>::new(),
             parcel::join(
-                MachineParser::<LittleEndianDataEncoding>::new(),
+                MachineParser::<E>::new(),
                 parcel::join(
-                    VersionParser::<LittleEndianDataEncoding>::new(),
+                    VersionParser::<E>::new(),
                     parcel::join(
-                        match_u32(ei_ident.ei_data),
+                        match_u32(encoding),
                         parcel::join(
-                            match_u32(ei_ident.ei_data),
+                            match_u32(encoding),
                             parcel::join(
-                                match_u32(ei_ident.ei_data),
-                                parcel::join(
-                                    match_u32(ei_ident.ei_data),
-                                    parcel::take_n(match_u16(ei_ident.ei_data), 6),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-            ),
-        )
-        .map(
-            move |(
-                r#type,
-                (
-                    machine,
-                    (version, (entry_point, (ph_offset, (sh_offset, (flags, two_byte_fields))))),
-                ),
-            )| {
-                FileHeader {
-                    ei_ident,
-                    r#type,
-                    machine,
-                    version,
-                    entry_point,
-                    ph_offset,
-                    sh_offset,
-                    flags,
-                    eh_size: two_byte_fields[0],
-                    phent_size: two_byte_fields[1],
-                    phnum: two_byte_fields[2],
-                    shent_size: two_byte_fields[3],
-                    shnum: two_byte_fields[4],
-                    shstrndx: two_byte_fields[5],
-                }
-            },
-        )
-        .parse(&input[16..])
-    }
-}
-
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>>
-    for FileHeaderParser<Elf64Addr, LittleEndianDataEncoding>
-{
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf64Addr>> {
-        let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
-        let encoding = EiData::Little;
-
-        parcel::join(
-            TypeParser::<LittleEndianDataEncoding>::new(),
-            parcel::join(
-                MachineParser::<LittleEndianDataEncoding>::new(),
-                parcel::join(
-                    VersionParser::<LittleEndianDataEncoding>::new(),
-                    parcel::join(
-                        match_u64(encoding),
-                        parcel::join(
-                            match_u64(encoding),
-                            parcel::join(
-                                match_u64(encoding),
+                                match_u32(encoding),
                                 parcel::join(
                                     match_u32(encoding),
                                     parcel::take_n(match_u16(encoding), 6),
@@ -683,19 +668,24 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>>
     }
 }
 
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>>
-    for FileHeaderParser<Elf64Addr, BigEndianDataEncoding>
+impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>> for FileHeaderParser<Elf64Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    TypeParser<E>: Parser<'a, &'a [u8], Type>,
+    MachineParser<E>: Parser<'a, &'a [u8], Machine>,
+    VersionParser<E>: Parser<'a, &'a [u8], Version>,
 {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf64Addr>> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
-        let encoding = EiData::Big;
+        let encoding = EiData::from(E::default());
 
         parcel::join(
-            TypeParser::<BigEndianDataEncoding>::new(),
+            TypeParser::<E>::new(),
             parcel::join(
-                MachineParser::<BigEndianDataEncoding>::new(),
+                MachineParser::<E>::new(),
                 parcel::join(
-                    VersionParser::<BigEndianDataEncoding>::new(),
+                    VersionParser::<E>::new(),
                     parcel::join(
                         match_u64(encoding),
                         parcel::join(

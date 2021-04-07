@@ -60,6 +60,22 @@ impl From<EiData> for u8 {
     }
 }
 
+/// UnknownDataEncoding is an explicit type for specifying that the data
+/// encoding is unknown. This will typically be used when parsing the ident
+/// field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct UnknownDataEncoding;
+
+/// LittleEndianDataEncoding is an explicit type for specifying that the data
+/// encoding is little-endian.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LittleEndianDataEncoding;
+
+/// BigEndianDataEncoding is an explicit type for specifying that the data
+/// encoding is big-endian.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BigEndianDataEncoding;
+
 struct EiDataParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiData> for EiDataParser {
@@ -443,29 +459,32 @@ pub struct FileHeader<AddrWidth> {
 }
 
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
-pub struct FileHeaderParser<A> {
+pub struct FileHeaderParser<A, E> {
     address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
 }
 
-impl FileHeaderParser<u32> {
+impl<E> FileHeaderParser<u32, E> {
     #[allow(dead_code)]
     fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
         }
     }
 }
 
-impl FileHeaderParser<u64> {
+impl<E> FileHeaderParser<u64, E> {
     #[allow(dead_code)]
     fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
         }
     }
 }
 
-impl<A> FileHeaderParser<A> {
+impl<A, E> FileHeaderParser<A, E> {
     /// identifier parses the elf magic bytes and class, returning the class if
     /// the elf file has a valid preamble.
     pub fn identifier(input: &[u8]) -> Result<EiIdent, FileErr> {
@@ -480,7 +499,7 @@ impl<A> FileHeaderParser<A> {
     }
 }
 
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr> {
+impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr, E> {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf32Addr>> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
@@ -536,7 +555,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParse
     }
 }
 
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>> for FileHeaderParser<Elf64Addr> {
+impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>> for FileHeaderParser<Elf64Addr, E> {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf64Addr>> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
@@ -701,15 +720,17 @@ mod tests {
 
         assert_eq!(
             Ok(EiClass::ThirtyTwoBit),
-            FileHeaderParser::<Elf32Addr>::identifier(&thirty_two_bit_input)
+            FileHeaderParser::<Elf32Addr, UnknownDataEncoding>::identifier(&thirty_two_bit_input)
                 .map(|ident| ident.ei_class)
         );
         assert_eq!(
             Ok(EiClass::SixtyFourBit),
-            FileHeaderParser::<Elf64Addr>::identifier(&sixty_four_bit_input)
+            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&sixty_four_bit_input)
                 .map(|ident| ident.ei_class)
         );
-        assert!(FileHeaderParser::<Elf64Addr>::identifier(&invalid_input).is_err());
+        assert!(
+            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&invalid_input).is_err()
+        );
     }
 
     #[test]
@@ -738,7 +759,7 @@ mod tests {
         ];
 
         assert_eq!(
-            FileHeaderParser::<Elf32Addr>::new()
+            FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
                 .parse(&input)
                 .unwrap()
                 .unwrap(),

@@ -214,23 +214,42 @@ impl From<Type> for u16 {
     }
 }
 
-struct TypeParser(EiData);
+struct TypeParser<E> {
+    endianness: std::marker::PhantomData<E>,
+}
 
-impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
-        let class = self.0;
+impl<'a, E> TypeParser<E> {
+    fn new() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+
+    fn parse_type(&self, data: EiData, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
         parcel::one_of(vec![
-            expect_u16(class, Type::None as u16).map(|_| Type::None),
-            expect_u16(class, Type::Rel as u16).map(|_| Type::Rel),
-            expect_u16(class, Type::Exec as u16).map(|_| Type::Exec),
-            expect_u16(class, Type::Dyn as u16).map(|_| Type::Dyn),
-            expect_u16(class, Type::Core as u16).map(|_| Type::Core),
-            expect_u16(class, Type::LOOS as u16).map(|_| Type::LOOS),
-            expect_u16(class, Type::HIOS as u16).map(|_| Type::HIOS),
-            expect_u16(class, Type::LOPROC as u16).map(|_| Type::LOPROC),
-            expect_u16(class, Type::HIPROC as u16).map(|_| Type::HIPROC),
+            expect_u16(data, Type::None as u16).map(|_| Type::None),
+            expect_u16(data, Type::Rel as u16).map(|_| Type::Rel),
+            expect_u16(data, Type::Exec as u16).map(|_| Type::Exec),
+            expect_u16(data, Type::Dyn as u16).map(|_| Type::Dyn),
+            expect_u16(data, Type::Core as u16).map(|_| Type::Core),
+            expect_u16(data, Type::LOOS as u16).map(|_| Type::LOOS),
+            expect_u16(data, Type::HIOS as u16).map(|_| Type::HIOS),
+            expect_u16(data, Type::LOPROC as u16).map(|_| Type::LOPROC),
+            expect_u16(data, Type::HIPROC as u16).map(|_| Type::HIPROC),
         ])
         .parse(input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<LittleEndianDataEncoding> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
+        self.parse_type(EiData::Little, input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<BigEndianDataEncoding> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
+        self.parse_type(EiData::Big, input)
     }
 }
 
@@ -293,13 +312,80 @@ impl From<Machine> for u16 {
     }
 }
 
-struct MachineParser(EiData);
+impl std::convert::TryFrom<u16> for Machine {
+    type Error = String;
 
-impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            0x00 => Ok(Machine::None),
+            0x01 => Ok(Machine::M32),
+            0x02 => Ok(Machine::SPARC),
+            0x03 => Ok(Machine::X386),
+            0x04 => Ok(Machine::M68k),
+            0x05 => Ok(Machine::M88k),
+            0x06 => Ok(Machine::IntelMCU),
+            0x07 => Ok(Machine::Intel80860),
+            0x08 => Ok(Machine::MIPS),
+            0x09 => Ok(Machine::S370),
+            0x0A => Ok(Machine::MIPSRS3LE),
+            0x0E => Ok(Machine::PARISC),
+            0x13 => Ok(Machine::I960),
+            0x14 => Ok(Machine::PPC),
+            0x15 => Ok(Machine::PPC64),
+            0x16 => Ok(Machine::S390),
+            0x24 => Ok(Machine::V800),
+            0x25 => Ok(Machine::FR20),
+            0x26 => Ok(Machine::RH32),
+            0x27 => Ok(Machine::RCE),
+            0x28 => Ok(Machine::ARM),
+            0x29 => Ok(Machine::Alpha),
+            0x2A => Ok(Machine::SH),
+            0x2B => Ok(Machine::SPARCV9),
+            0x2C => Ok(Machine::Tricore),
+            0x2D => Ok(Machine::ARC),
+            0x2E => Ok(Machine::H8300),
+            0x2F => Ok(Machine::H8_300H),
+            0x30 => Ok(Machine::H8s),
+            0x31 => Ok(Machine::H8500),
+            0x32 => Ok(Machine::IA64),
+            0x33 => Ok(Machine::MIPSX),
+            0x34 => Ok(Machine::Coldfire),
+            0x35 => Ok(Machine::M68HC12),
+            0x36 => Ok(Machine::MMA),
+            0x37 => Ok(Machine::PCP),
+            0x38 => Ok(Machine::NCPU),
+            0x39 => Ok(Machine::NDR1),
+            0x3a => Ok(Machine::Starcore),
+            0x3B => Ok(Machine::ME16),
+            0x3C => Ok(Machine::ST100),
+            0x3D => Ok(Machine::TinyJ),
+            0x3e => Ok(Machine::X86_64),
+            0x8C => Ok(Machine::S320C600),
+            0xB9 => Ok(Machine::AARCH64),
+            0xFA => Ok(Machine::RISCV),
+            0xFB => Ok(Machine::BPF),
+            0x101 => Ok(Machine::WDC65C817),
+            _ => Err(format!("cannot convert {} to Machine variant", value)),
+        }
+    }
+}
+
+struct MachineParser<E> {
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<E> MachineParser<E> {
+    fn new() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<LittleEndianDataEncoding> {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Machine> {
         use std::convert::TryInto;
         let preparse_input = input;
-        let endianness = self.0;
 
         input
             .iter()
@@ -308,61 +394,30 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
             .collect::<Vec<u8>>()
             .try_into()
             .map(|mcode| {
-                let val = match endianness {
-                    EiData::Little => u16::from_le_bytes(mcode),
-                    EiData::Big => u16::from_be_bytes(mcode),
-                };
-                match val {
-                    0x00 => Some(Machine::None),
-                    0x01 => Some(Machine::M32),
-                    0x02 => Some(Machine::SPARC),
-                    0x03 => Some(Machine::X386),
-                    0x04 => Some(Machine::M68k),
-                    0x05 => Some(Machine::M88k),
-                    0x06 => Some(Machine::IntelMCU),
-                    0x07 => Some(Machine::Intel80860),
-                    0x08 => Some(Machine::MIPS),
-                    0x09 => Some(Machine::S370),
-                    0x0A => Some(Machine::MIPSRS3LE),
-                    0x0E => Some(Machine::PARISC),
-                    0x13 => Some(Machine::I960),
-                    0x14 => Some(Machine::PPC),
-                    0x15 => Some(Machine::PPC64),
-                    0x16 => Some(Machine::S390),
-                    0x24 => Some(Machine::V800),
-                    0x25 => Some(Machine::FR20),
-                    0x26 => Some(Machine::RH32),
-                    0x27 => Some(Machine::RCE),
-                    0x28 => Some(Machine::ARM),
-                    0x29 => Some(Machine::Alpha),
-                    0x2A => Some(Machine::SH),
-                    0x2B => Some(Machine::SPARCV9),
-                    0x2C => Some(Machine::Tricore),
-                    0x2D => Some(Machine::ARC),
-                    0x2E => Some(Machine::H8300),
-                    0x2F => Some(Machine::H8_300H),
-                    0x30 => Some(Machine::H8s),
-                    0x31 => Some(Machine::H8500),
-                    0x32 => Some(Machine::IA64),
-                    0x33 => Some(Machine::MIPSX),
-                    0x34 => Some(Machine::Coldfire),
-                    0x35 => Some(Machine::M68HC12),
-                    0x36 => Some(Machine::MMA),
-                    0x37 => Some(Machine::PCP),
-                    0x38 => Some(Machine::NCPU),
-                    0x39 => Some(Machine::NDR1),
-                    0x3a => Some(Machine::Starcore),
-                    0x3B => Some(Machine::ME16),
-                    0x3C => Some(Machine::ST100),
-                    0x3D => Some(Machine::TinyJ),
-                    0x3e => Some(Machine::X86_64),
-                    0x8C => Some(Machine::S320C600),
-                    0xB9 => Some(Machine::AARCH64),
-                    0xFA => Some(Machine::RISCV),
-                    0xFB => Some(Machine::BPF),
-                    0x101 => Some(Machine::WDC65C817),
-                    _ => None,
-                }
+                let val = u16::from_le_bytes(mcode);
+                std::convert::TryFrom::try_from(val)
+            })
+            .unwrap()
+            .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
+                Ok(MatchStatus::Match((&preparse_input[2..], m)))
+            })
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEncoding> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Machine> {
+        use std::convert::TryInto;
+        let preparse_input = input;
+
+        input
+            .iter()
+            .take(2)
+            .copied()
+            .collect::<Vec<u8>>()
+            .try_into()
+            .map(|mcode| {
+                let val = u16::from_be_bytes(mcode);
+                std::convert::TryFrom::try_from(val)
             })
             .unwrap()
             .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
@@ -504,9 +559,9 @@ impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderPa
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
         parcel::join(
-            TypeParser(ei_ident.ei_data),
+            TypeParser::<LittleEndianDataEncoding>::new(),
             parcel::join(
-                MachineParser(ei_ident.ei_data),
+                MachineParser::<LittleEndianDataEncoding>::new(),
                 parcel::join(
                     VersionParser(ei_ident.ei_data),
                     parcel::join(
@@ -560,9 +615,9 @@ impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>> for FileHeaderPa
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
 
         parcel::join(
-            TypeParser(ei_ident.ei_data),
+            TypeParser::<LittleEndianDataEncoding>::new(),
             parcel::join(
-                MachineParser(ei_ident.ei_data),
+                MachineParser::<LittleEndianDataEncoding>::new(),
                 parcel::join(
                     VersionParser(ei_ident.ei_data),
                     parcel::join(

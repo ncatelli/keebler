@@ -555,7 +555,6 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
 /// information along with sizing, architechture and additional metadata about
 /// other ELF headers.
 pub struct FileHeader<AddrWidth> {
-    ei_ident: EiIdent,
     r#type: Type,
     machine: Machine,
     version: Version,
@@ -621,7 +620,6 @@ where
     VersionParser<E>: Parser<'a, &'a [u8], Version>,
 {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf32Addr>> {
-        let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
         let encoding = EiData::from(E::default());
 
         parcel::join(
@@ -655,7 +653,6 @@ where
                 ),
             )| {
                 FileHeader {
-                    ei_ident,
                     r#type,
                     machine,
                     version,
@@ -685,7 +682,6 @@ where
     VersionParser<E>: Parser<'a, &'a [u8], Version>,
 {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf64Addr>> {
-        let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
         let encoding = EiData::from(E::default());
 
         parcel::join(
@@ -719,7 +715,6 @@ where
                 ),
             )| {
                 FileHeader {
-                    ei_ident,
                     r#type,
                     machine,
                     version,
@@ -737,6 +732,22 @@ where
             },
         )
         .parse(&input[16..])
+    }
+}
+
+/// ElfHeader captures the full ELF file header into a single struct along
+/// with the Identification information separated from the file header.
+pub struct ElfHeader<E> {
+    pub ei_ident: EiIdent,
+    pub file_header: FileHeader<E>,
+}
+
+impl<E> ElfHeader<E> {
+    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>) -> Self {
+        Self {
+            ei_ident,
+            file_header,
+        }
     }
 }
 
@@ -899,13 +910,6 @@ mod tests {
                 .unwrap()
                 .unwrap(),
             FileHeader::<u32> {
-                ei_ident: EiIdent {
-                    ei_class: EiClass::ThirtyTwoBit,
-                    ei_data: EiData::Little,
-                    ei_version: EiVersion::One,
-                    ei_osabi: EiOsAbi::SysV,
-                    ei_abiversion: EiAbiVersion::One,
-                },
                 r#type: Type::None,
                 machine: Machine::X386,
                 version: Version::One,

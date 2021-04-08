@@ -215,6 +215,8 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiAbiVersion> for EiAbiVersionParser {
     }
 }
 
+/// Type represents the type of ELF header for example executable or
+/// dynamically-linkable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum Type {
@@ -280,6 +282,8 @@ impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<BigEndianDataEncoding
     }
 }
 
+/// Machine represents a machine architecture for a given binary represented as
+/// a u16.
 #[allow(clippy::clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]

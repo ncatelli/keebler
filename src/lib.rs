@@ -596,21 +596,6 @@ impl<E> FileHeaderParser<u64, E> {
     }
 }
 
-impl<A, E> FileHeaderParser<A, E> {
-    /// identifier parses the elf magic bytes and class, returning the class if
-    /// the elf file has a valid preamble.
-    pub fn identifier(input: &[u8]) -> Result<EiIdent, FileErr> {
-        EiIdentParser
-            .parse(input)
-            .map(|ms| match ms {
-                MatchStatus::Match((_, ei_ident)) => Some(ei_ident),
-                MatchStatus::NoMatch(_) => None,
-            })
-            .map_err(|_| FileErr::InvalidFile)?
-            .ok_or(FileErr::InvalidFile)
-    }
-}
-
 impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr, E>
 where
     EiData: From<E>,
@@ -737,6 +722,7 @@ where
 
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ElfHeader<E> {
     pub ei_ident: EiIdent,
     pub file_header: FileHeader<E>,
@@ -886,21 +872,27 @@ mod tests {
 
         assert_eq!(
             Ok(EiClass::ThirtyTwoBit),
-            FileHeaderParser::<Elf32Addr, UnknownDataEncoding>::identifier(&thirty_two_bit_input)
-                .map(|ident| ident.ei_class)
+            EiIdentParser
+                .parse(&thirty_two_bit_input)
+                .map(|ms| ms.unwrap().ei_class)
         );
         assert_eq!(
             Ok(EiClass::SixtyFourBit),
-            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&sixty_four_bit_input)
-                .map(|ident| ident.ei_class)
+            EiIdentParser
+                .parse(&sixty_four_bit_input)
+                .map(|ms| ms.unwrap().ei_class)
         );
-        assert!(
-            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&invalid_input).is_err()
-        );
+        assert!(EiIdentParser
+            .parse(&invalid_input)
+            .and_then(|ms| match ms {
+                MatchStatus::Match(_) => Err("invalid input shouldn't match".to_string()),
+                MatchStatus::NoMatch(_) => Ok(()),
+            })
+            .is_ok());
     }
 
     #[test]
-    fn parse_known_good_header() {
+    fn parse_known_good_file_header() {
         #[rustfmt::skip]
         let input: Vec<u8> = generate_elf_header!();
 
@@ -909,7 +901,7 @@ mod tests {
                 .parse(&input)
                 .unwrap()
                 .unwrap(),
-            FileHeader::<u32> {
+            FileHeader::<Elf32Addr> {
                 r#type: Type::None,
                 machine: Machine::X386,
                 version: Version::One,

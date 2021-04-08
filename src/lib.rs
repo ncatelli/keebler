@@ -60,6 +60,42 @@ impl From<EiData> for u8 {
     }
 }
 
+impl From<LittleEndianDataEncoding> for EiData {
+    fn from(_: LittleEndianDataEncoding) -> Self {
+        Self::Little
+    }
+}
+
+impl From<BigEndianDataEncoding> for EiData {
+    fn from(_: BigEndianDataEncoding) -> Self {
+        Self::Big
+    }
+}
+
+/// DataEncoding is a 0 method trait that is used for implementing a
+/// genericized Endianness encoding
+pub trait DataEncoding {}
+
+/// UnknownDataEncoding is an explicit type for specifying that the data
+/// encoding is unknown. This will typically be used when parsing the ident
+/// field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnknownDataEncoding;
+
+/// LittleEndianDataEncoding is an explicit type for specifying that the data
+/// encoding is little-endian.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LittleEndianDataEncoding;
+
+impl DataEncoding for LittleEndianDataEncoding {}
+
+/// BigEndianDataEncoding is an explicit type for specifying that the data
+/// encoding is big-endian.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BigEndianDataEncoding;
+
+impl DataEncoding for BigEndianDataEncoding {}
+
 struct EiDataParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiData> for EiDataParser {
@@ -94,10 +130,11 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiVersion> for EiVersionParser {
     }
 }
 
-/// EiOSABI represents the target systems ABI.
+/// EiOsAbi represents the target systems ABI.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EiOSABI {
+pub enum EiOsAbi {
     SysV = 0x00,
     HPUX = 0x01,
     NetBSD = 0x02,
@@ -118,35 +155,35 @@ pub enum EiOSABI {
     OpenVOS = 0x12,
 }
 
-impl From<EiOSABI> for u8 {
-    fn from(src: EiOSABI) -> Self {
+impl From<EiOsAbi> for u8 {
+    fn from(src: EiOsAbi) -> Self {
         src as u8
     }
 }
 
-struct EiOSABIParser;
+struct EiOsAbiParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], EiOSABI> for EiOSABIParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiOSABI> {
+impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiOsAbi> {
         parcel::one_of(vec![
-            expect_byte(EiOSABI::SysV as u8).map(|_| EiOSABI::SysV),
-            expect_byte(EiOSABI::HPUX as u8).map(|_| EiOSABI::HPUX),
-            expect_byte(EiOSABI::NetBSD as u8).map(|_| EiOSABI::NetBSD),
-            expect_byte(EiOSABI::Linux as u8).map(|_| EiOSABI::Linux),
-            expect_byte(EiOSABI::GNUHurd as u8).map(|_| EiOSABI::GNUHurd),
-            expect_byte(EiOSABI::Solaris as u8).map(|_| EiOSABI::Solaris),
-            expect_byte(EiOSABI::AIX as u8).map(|_| EiOSABI::AIX),
-            expect_byte(EiOSABI::IRIX as u8).map(|_| EiOSABI::IRIX),
-            expect_byte(EiOSABI::FreeBSD as u8).map(|_| EiOSABI::FreeBSD),
-            expect_byte(EiOSABI::Tru64 as u8).map(|_| EiOSABI::Tru64),
-            expect_byte(EiOSABI::Novell as u8).map(|_| EiOSABI::Novell),
-            expect_byte(EiOSABI::OpenBSD as u8).map(|_| EiOSABI::OpenBSD),
-            expect_byte(EiOSABI::OpenVMS as u8).map(|_| EiOSABI::OpenVMS),
-            expect_byte(EiOSABI::NonStop as u8).map(|_| EiOSABI::NonStop),
-            expect_byte(EiOSABI::Aros as u8).map(|_| EiOSABI::Aros),
-            expect_byte(EiOSABI::Fenix as u8).map(|_| EiOSABI::Fenix),
-            expect_byte(EiOSABI::CloudABI as u8).map(|_| EiOSABI::CloudABI),
-            expect_byte(EiOSABI::OpenVOS as u8).map(|_| EiOSABI::OpenVOS),
+            expect_byte(EiOsAbi::SysV as u8).map(|_| EiOsAbi::SysV),
+            expect_byte(EiOsAbi::HPUX as u8).map(|_| EiOsAbi::HPUX),
+            expect_byte(EiOsAbi::NetBSD as u8).map(|_| EiOsAbi::NetBSD),
+            expect_byte(EiOsAbi::Linux as u8).map(|_| EiOsAbi::Linux),
+            expect_byte(EiOsAbi::GNUHurd as u8).map(|_| EiOsAbi::GNUHurd),
+            expect_byte(EiOsAbi::Solaris as u8).map(|_| EiOsAbi::Solaris),
+            expect_byte(EiOsAbi::AIX as u8).map(|_| EiOsAbi::AIX),
+            expect_byte(EiOsAbi::IRIX as u8).map(|_| EiOsAbi::IRIX),
+            expect_byte(EiOsAbi::FreeBSD as u8).map(|_| EiOsAbi::FreeBSD),
+            expect_byte(EiOsAbi::Tru64 as u8).map(|_| EiOsAbi::Tru64),
+            expect_byte(EiOsAbi::Novell as u8).map(|_| EiOsAbi::Novell),
+            expect_byte(EiOsAbi::OpenBSD as u8).map(|_| EiOsAbi::OpenBSD),
+            expect_byte(EiOsAbi::OpenVMS as u8).map(|_| EiOsAbi::OpenVMS),
+            expect_byte(EiOsAbi::NonStop as u8).map(|_| EiOsAbi::NonStop),
+            expect_byte(EiOsAbi::Aros as u8).map(|_| EiOsAbi::Aros),
+            expect_byte(EiOsAbi::Fenix as u8).map(|_| EiOsAbi::Fenix),
+            expect_byte(EiOsAbi::CloudABI as u8).map(|_| EiOsAbi::CloudABI),
+            expect_byte(EiOsAbi::OpenVOS as u8).map(|_| EiOsAbi::OpenVOS),
         ])
         .parse(input)
     }
@@ -155,41 +192,43 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiOSABI> for EiOSABIParser {
 /// EIABIVersion represents the abi version and is often left null.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum EIABIVersion {
+pub enum EiAbiVersion {
     Zero = 0x00,
     One = 0x01,
 }
 
-impl From<EIABIVersion> for u8 {
-    fn from(src: EIABIVersion) -> Self {
+impl From<EiAbiVersion> for u8 {
+    fn from(src: EiAbiVersion) -> Self {
         src as u8
     }
 }
 
-struct EIABIVersionParser;
+struct EiAbiVersionParser;
 
-impl<'a> parcel::Parser<'a, &'a [u8], EIABIVersion> for EIABIVersionParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EIABIVersion> {
+impl<'a> parcel::Parser<'a, &'a [u8], EiAbiVersion> for EiAbiVersionParser {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiAbiVersion> {
         parcel::one_of(vec![
-            expect_byte(EIABIVersion::Zero as u8).map(|_| EIABIVersion::Zero),
-            expect_byte(EIABIVersion::One as u8).map(|_| EIABIVersion::One),
+            expect_byte(EiAbiVersion::Zero as u8).map(|_| EiAbiVersion::Zero),
+            expect_byte(EiAbiVersion::One as u8).map(|_| EiAbiVersion::One),
         ])
         .parse(input)
     }
 }
 
+/// Type represents the type of ELF header for example executable or
+/// dynamically-linkable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-enum Type {
+pub enum Type {
     None = 0x00,
     Rel = 0x01,
     Exec = 0x02,
     Dyn = 0x03,
     Core = 0x04,
-    LOOS = 0xFE00,
-    HIOS = 0xFEFF,
-    LOPROC = 0xFF00,
-    HIPROC = 0xFFFF,
+    LoOs = 0xFE00,
+    HiOs = 0xFEFF,
+    LoProc = 0xFF00,
+    HiProc = 0xFFFF,
 }
 
 impl From<Type> for u16 {
@@ -198,29 +237,57 @@ impl From<Type> for u16 {
     }
 }
 
-struct TypeParser(EiData);
+pub struct TypeParser<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+}
 
-impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
-        let class = self.0;
+impl<'a, E> TypeParser<E>
+where
+    E: DataEncoding,
+{
+    fn new() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+
+    fn parse_type(&self, data: EiData, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
         parcel::one_of(vec![
-            expect_u16(class, Type::None as u16).map(|_| Type::None),
-            expect_u16(class, Type::Rel as u16).map(|_| Type::Rel),
-            expect_u16(class, Type::Exec as u16).map(|_| Type::Exec),
-            expect_u16(class, Type::Dyn as u16).map(|_| Type::Dyn),
-            expect_u16(class, Type::Core as u16).map(|_| Type::Core),
-            expect_u16(class, Type::LOOS as u16).map(|_| Type::LOOS),
-            expect_u16(class, Type::HIOS as u16).map(|_| Type::HIOS),
-            expect_u16(class, Type::LOPROC as u16).map(|_| Type::LOPROC),
-            expect_u16(class, Type::HIPROC as u16).map(|_| Type::HIPROC),
+            expect_u16(data, Type::None as u16).map(|_| Type::None),
+            expect_u16(data, Type::Rel as u16).map(|_| Type::Rel),
+            expect_u16(data, Type::Exec as u16).map(|_| Type::Exec),
+            expect_u16(data, Type::Dyn as u16).map(|_| Type::Dyn),
+            expect_u16(data, Type::Core as u16).map(|_| Type::Core),
+            expect_u16(data, Type::LoOs as u16).map(|_| Type::LoOs),
+            expect_u16(data, Type::HiOs as u16).map(|_| Type::HiOs),
+            expect_u16(data, Type::LoProc as u16).map(|_| Type::LoProc),
+            expect_u16(data, Type::HiProc as u16).map(|_| Type::HiProc),
         ])
         .parse(input)
     }
 }
 
+impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<LittleEndianDataEncoding> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
+        self.parse_type(EiData::Little, input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<BigEndianDataEncoding> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
+        self.parse_type(EiData::Big, input)
+    }
+}
+
+/// Machine represents a machine architecture for a given binary represented as
+/// a u16.
+#[allow(clippy::clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
-enum Machine {
+pub enum Machine {
     None = 0x00,
     M32 = 0x01,
     SPARC = 0x02,
@@ -277,13 +344,86 @@ impl From<Machine> for u16 {
     }
 }
 
-struct MachineParser(EiData);
+impl std::convert::TryFrom<u16> for Machine {
+    type Error = String;
 
-impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            0x00 => Ok(Machine::None),
+            0x01 => Ok(Machine::M32),
+            0x02 => Ok(Machine::SPARC),
+            0x03 => Ok(Machine::X386),
+            0x04 => Ok(Machine::M68k),
+            0x05 => Ok(Machine::M88k),
+            0x06 => Ok(Machine::IntelMCU),
+            0x07 => Ok(Machine::Intel80860),
+            0x08 => Ok(Machine::MIPS),
+            0x09 => Ok(Machine::S370),
+            0x0A => Ok(Machine::MIPSRS3LE),
+            0x0E => Ok(Machine::PARISC),
+            0x13 => Ok(Machine::I960),
+            0x14 => Ok(Machine::PPC),
+            0x15 => Ok(Machine::PPC64),
+            0x16 => Ok(Machine::S390),
+            0x24 => Ok(Machine::V800),
+            0x25 => Ok(Machine::FR20),
+            0x26 => Ok(Machine::RH32),
+            0x27 => Ok(Machine::RCE),
+            0x28 => Ok(Machine::ARM),
+            0x29 => Ok(Machine::Alpha),
+            0x2A => Ok(Machine::SH),
+            0x2B => Ok(Machine::SPARCV9),
+            0x2C => Ok(Machine::Tricore),
+            0x2D => Ok(Machine::ARC),
+            0x2E => Ok(Machine::H8300),
+            0x2F => Ok(Machine::H8_300H),
+            0x30 => Ok(Machine::H8s),
+            0x31 => Ok(Machine::H8500),
+            0x32 => Ok(Machine::IA64),
+            0x33 => Ok(Machine::MIPSX),
+            0x34 => Ok(Machine::Coldfire),
+            0x35 => Ok(Machine::M68HC12),
+            0x36 => Ok(Machine::MMA),
+            0x37 => Ok(Machine::PCP),
+            0x38 => Ok(Machine::NCPU),
+            0x39 => Ok(Machine::NDR1),
+            0x3a => Ok(Machine::Starcore),
+            0x3B => Ok(Machine::ME16),
+            0x3C => Ok(Machine::ST100),
+            0x3D => Ok(Machine::TinyJ),
+            0x3e => Ok(Machine::X86_64),
+            0x8C => Ok(Machine::S320C600),
+            0xB9 => Ok(Machine::AARCH64),
+            0xFA => Ok(Machine::RISCV),
+            0xFB => Ok(Machine::BPF),
+            0x101 => Ok(Machine::WDC65C817),
+            _ => Err(format!("cannot convert {} to Machine variant", value)),
+        }
+    }
+}
+
+pub struct MachineParser<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<E> MachineParser<E>
+where
+    E: DataEncoding,
+{
+    fn new() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<LittleEndianDataEncoding> {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Machine> {
         use std::convert::TryInto;
         let preparse_input = input;
-        let endianness = self.0;
 
         input
             .iter()
@@ -291,63 +431,26 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
             .copied()
             .collect::<Vec<u8>>()
             .try_into()
-            .map(|mcode| {
-                let val = match endianness {
-                    EiData::Little => u16::from_le_bytes(mcode),
-                    EiData::Big => u16::from_be_bytes(mcode),
-                };
-                match val {
-                    0x00 => Some(Machine::None),
-                    0x01 => Some(Machine::M32),
-                    0x02 => Some(Machine::SPARC),
-                    0x03 => Some(Machine::X386),
-                    0x04 => Some(Machine::M68k),
-                    0x05 => Some(Machine::M88k),
-                    0x06 => Some(Machine::IntelMCU),
-                    0x07 => Some(Machine::Intel80860),
-                    0x08 => Some(Machine::MIPS),
-                    0x09 => Some(Machine::S370),
-                    0x0A => Some(Machine::MIPSRS3LE),
-                    0x0E => Some(Machine::PARISC),
-                    0x13 => Some(Machine::I960),
-                    0x14 => Some(Machine::PPC),
-                    0x15 => Some(Machine::PPC64),
-                    0x16 => Some(Machine::S390),
-                    0x24 => Some(Machine::V800),
-                    0x25 => Some(Machine::FR20),
-                    0x26 => Some(Machine::RH32),
-                    0x27 => Some(Machine::RCE),
-                    0x28 => Some(Machine::ARM),
-                    0x29 => Some(Machine::Alpha),
-                    0x2A => Some(Machine::SH),
-                    0x2B => Some(Machine::SPARCV9),
-                    0x2C => Some(Machine::Tricore),
-                    0x2D => Some(Machine::ARC),
-                    0x2E => Some(Machine::H8300),
-                    0x2F => Some(Machine::H8_300H),
-                    0x30 => Some(Machine::H8s),
-                    0x31 => Some(Machine::H8500),
-                    0x32 => Some(Machine::IA64),
-                    0x33 => Some(Machine::MIPSX),
-                    0x34 => Some(Machine::Coldfire),
-                    0x35 => Some(Machine::M68HC12),
-                    0x36 => Some(Machine::MMA),
-                    0x37 => Some(Machine::PCP),
-                    0x38 => Some(Machine::NCPU),
-                    0x39 => Some(Machine::NDR1),
-                    0x3a => Some(Machine::Starcore),
-                    0x3B => Some(Machine::ME16),
-                    0x3C => Some(Machine::ST100),
-                    0x3D => Some(Machine::TinyJ),
-                    0x3e => Some(Machine::X86_64),
-                    0x8C => Some(Machine::S320C600),
-                    0xB9 => Some(Machine::AARCH64),
-                    0xFA => Some(Machine::RISCV),
-                    0xFB => Some(Machine::BPF),
-                    0x101 => Some(Machine::WDC65C817),
-                    _ => None,
-                }
+            .map(|mcode| std::convert::TryFrom::try_from(u16::from_le_bytes(mcode)))
+            .unwrap()
+            .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
+                Ok(MatchStatus::Match((&preparse_input[2..], m)))
             })
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEncoding> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Machine> {
+        use std::convert::TryInto;
+        let preparse_input = input;
+
+        input
+            .iter()
+            .take(2)
+            .copied()
+            .collect::<Vec<u8>>()
+            .try_into()
+            .map(|mcode| std::convert::TryFrom::try_from(u16::from_be_bytes(mcode)))
             .unwrap()
             .map_or(Ok(MatchStatus::NoMatch(preparse_input)), |m| {
                 Ok(MatchStatus::Match((&preparse_input[2..], m)))
@@ -357,7 +460,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
-enum Version {
+pub enum Version {
     One = 0x01,
 }
 
@@ -367,11 +470,37 @@ impl From<Version> for u32 {
     }
 }
 
-struct VersionParser(EiData);
+pub struct VersionParser<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+}
 
-impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser {
+impl<E> VersionParser<E>
+where
+    E: DataEncoding,
+{
+    fn new() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser<LittleEndianDataEncoding> {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Version> {
-        expect_u32(self.0, 0x01).map(|_| Version::One).parse(input)
+        expect_u32(EiData::Little, 0x01)
+            .map(|_| Version::One)
+            .parse(input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser<BigEndianDataEncoding> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Version> {
+        expect_u32(EiData::Big, 0x01)
+            .map(|_| Version::One)
+            .parse(input)
     }
 }
 
@@ -382,8 +511,8 @@ pub struct EiIdent {
     pub ei_class: EiClass,
     pub ei_data: EiData,
     pub ei_version: EiVersion,
-    pub ei_osabi: EiOSABI,
-    pub ei_abiversion: EIABIVersion,
+    pub ei_osabi: EiOsAbi,
+    pub ei_abiversion: EiAbiVersion,
 }
 
 /// EiIdentParser defines a parser for parsing a raw bitstream into an EiIdent.
@@ -399,7 +528,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
                     EiDataParser,
                     parcel::join(
                         EiVersionParser,
-                        parcel::join(EiOSABIParser, EIABIVersionParser),
+                        parcel::join(EiOsAbiParser, EiAbiVersionParser),
                     ),
                 ),
             )
@@ -443,29 +572,32 @@ pub struct FileHeader<AddrWidth> {
 }
 
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
-pub struct FileHeaderParser<A> {
+pub struct FileHeaderParser<A, E> {
     address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
 }
 
-impl FileHeaderParser<u32> {
+impl<E> FileHeaderParser<u32, E> {
     #[allow(dead_code)]
     fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
         }
     }
 }
 
-impl FileHeaderParser<u64> {
+impl<E> FileHeaderParser<u64, E> {
     #[allow(dead_code)]
     fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
         }
     }
 }
 
-impl<A> FileHeaderParser<A> {
+impl<A, E> FileHeaderParser<A, E> {
     /// identifier parses the elf magic bytes and class, returning the class if
     /// the elf file has a valid preamble.
     pub fn identifier(input: &[u8]) -> Result<EiIdent, FileErr> {
@@ -480,25 +612,33 @@ impl<A> FileHeaderParser<A> {
     }
 }
 
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr> {
+impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    TypeParser<E>: Parser<'a, &'a [u8], Type>,
+    MachineParser<E>: Parser<'a, &'a [u8], Machine>,
+    VersionParser<E>: Parser<'a, &'a [u8], Version>,
+{
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf32Addr>> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
+        let encoding = EiData::from(E::default());
 
         parcel::join(
-            TypeParser(ei_ident.ei_data),
+            TypeParser::<E>::new(),
             parcel::join(
-                MachineParser(ei_ident.ei_data),
+                MachineParser::<E>::new(),
                 parcel::join(
-                    VersionParser(ei_ident.ei_data),
+                    VersionParser::<E>::new(),
                     parcel::join(
-                        match_u32(ei_ident.ei_data),
+                        match_u32(encoding),
                         parcel::join(
-                            match_u32(ei_ident.ei_data),
+                            match_u32(encoding),
                             parcel::join(
-                                match_u32(ei_ident.ei_data),
+                                match_u32(encoding),
                                 parcel::join(
-                                    match_u32(ei_ident.ei_data),
-                                    parcel::take_n(match_u16(ei_ident.ei_data), 6),
+                                    match_u32(encoding),
+                                    parcel::take_n(match_u16(encoding), 6),
                                 ),
                             ),
                         ),
@@ -536,25 +676,33 @@ impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParse
     }
 }
 
-impl<'a> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>> for FileHeaderParser<Elf64Addr> {
+impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf64Addr>> for FileHeaderParser<Elf64Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    TypeParser<E>: Parser<'a, &'a [u8], Type>,
+    MachineParser<E>: Parser<'a, &'a [u8], Machine>,
+    VersionParser<E>: Parser<'a, &'a [u8], Version>,
+{
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf64Addr>> {
         let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
+        let encoding = EiData::from(E::default());
 
         parcel::join(
-            TypeParser(ei_ident.ei_data),
+            TypeParser::<E>::new(),
             parcel::join(
-                MachineParser(ei_ident.ei_data),
+                MachineParser::<E>::new(),
                 parcel::join(
-                    VersionParser(ei_ident.ei_data),
+                    VersionParser::<E>::new(),
                     parcel::join(
-                        match_u64(ei_ident.ei_data),
+                        match_u64(encoding),
                         parcel::join(
-                            match_u64(ei_ident.ei_data),
+                            match_u64(encoding),
                             parcel::join(
-                                match_u64(ei_ident.ei_data),
+                                match_u64(encoding),
                                 parcel::join(
-                                    match_u32(ei_ident.ei_data),
-                                    parcel::take_n(match_u16(ei_ident.ei_data), 6),
+                                    match_u32(encoding),
+                                    parcel::take_n(match_u16(encoding), 6),
                                 ),
                             ),
                         ),
@@ -687,6 +835,32 @@ fn match_u64<'a>(endianness: EiData) -> impl Parser<'a, &'a [u8], u64> {
 mod tests {
     use super::*;
 
+    macro_rules! generate_elf_header {
+        () => {
+            vec![
+                0x7f, 0x45, 0x4c, 0x46, // magic
+                0x01, // ei_class
+                0x01, // ei_data
+                0x01, // ei_version
+                0x00, // ei_osabi
+                0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // padding
+                0x00, 0x00, // type
+                0x03, 0x00, // machine
+                0x01, 0x00, 0x00, 0x00, //version
+                0x05, 0x00, 0x00, 0x00, // entry
+                0x0A, 0x00, 0x00, 0x00, // phoff
+                0x0B, 0x00, 0x00, 0x00, // shoff
+                0x02, 0x00, 0x00, 0x00, // flags
+                0x00, 0x00, // eh_size
+                0x01, 0x00, // phentsize
+                0x01, 0x00, // phnum
+                0x01, 0x00, // shentsize
+                0x01, 0x00, // shnum
+                0x01, 0x00, // shstrndx
+            ]
+        };
+    }
+
     #[test]
     fn parse_preamble_should_return_expected_results() {
         let thirty_two_bit_input = [
@@ -701,44 +875,26 @@ mod tests {
 
         assert_eq!(
             Ok(EiClass::ThirtyTwoBit),
-            FileHeaderParser::<Elf32Addr>::identifier(&thirty_two_bit_input)
+            FileHeaderParser::<Elf32Addr, UnknownDataEncoding>::identifier(&thirty_two_bit_input)
                 .map(|ident| ident.ei_class)
         );
         assert_eq!(
             Ok(EiClass::SixtyFourBit),
-            FileHeaderParser::<Elf64Addr>::identifier(&sixty_four_bit_input)
+            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&sixty_four_bit_input)
                 .map(|ident| ident.ei_class)
         );
-        assert!(FileHeaderParser::<Elf64Addr>::identifier(&invalid_input).is_err());
+        assert!(
+            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&invalid_input).is_err()
+        );
     }
 
     #[test]
     fn parse_known_good_header() {
         #[rustfmt::skip]
-        let input: Vec<u8> = vec![
-            0x7f, 0x45, 0x4c, 0x46, // magic
-            0x01, // ei_class
-            0x01, // ei_data
-            0x01, // ei_version
-            0x00, // ei_osabi
-            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // padding 
-            0x00, 0x00, // type
-            0x03, 0x00, // machine
-            0x01, 0x00, 0x00, 0x00, //version
-            0x05, 0x00, 0x00, 0x00, // entry
-            0x0A, 0x00, 0x00, 0x00, // phoff
-            0x0B, 0x00, 0x00, 0x00, // shoff
-            0x02, 0x00, 0x00, 0x00, // flags
-            0x00, 0x00, // eh_size
-            0x01, 0x00, // phentsize
-            0x01, 0x00, // phnum
-            0x01, 0x00, // shentsize
-            0x01, 0x00, // shnum
-            0x01, 0x00, // shstrndx
-        ];
+        let input: Vec<u8> = generate_elf_header!();
 
         assert_eq!(
-            FileHeaderParser::<Elf32Addr>::new()
+            FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
                 .parse(&input)
                 .unwrap()
                 .unwrap(),
@@ -747,8 +903,8 @@ mod tests {
                     ei_class: EiClass::ThirtyTwoBit,
                     ei_data: EiData::Little,
                     ei_version: EiVersion::One,
-                    ei_osabi: EiOSABI::SysV,
-                    ei_abiversion: EIABIVersion::One,
+                    ei_osabi: EiOsAbi::SysV,
+                    ei_abiversion: EiAbiVersion::One,
                 },
                 r#type: Type::None,
                 machine: Machine::X386,

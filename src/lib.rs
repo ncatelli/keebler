@@ -2,8 +2,18 @@ use parcel::parsers::byte::expect_byte;
 use parcel::prelude::v1::*;
 
 // Type Metadata
+
+/// AddressWidth represents a variant of address size. This should, for the
+/// most part be either u32 or u64 for ELF.
+pub trait AddressWidth {}
+
 type Elf32Addr = u32;
+
+impl AddressWidth for Elf32Addr {}
+
 type Elf64Addr = u64;
+
+impl AddressWidth for Elf64Addr {}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FileErr {
@@ -33,6 +43,20 @@ impl From<EiClass> for u8 {
     }
 }
 
+impl From<Elf32Addr> for EiClass {
+    fn from(_: Elf32Addr) -> Self {
+        EiClass::ThirtyTwoBit
+    }
+}
+
+impl From<Elf64Addr> for EiClass {
+    fn from(_: Elf64Addr) -> Self {
+        EiClass::SixtyFourBit
+    }
+}
+
+/// EiClassParser functiona as a wrapper struct for parsing binary data into
+/// an EiClass.
 struct EiClassParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiClass> for EiClassParser {
@@ -96,6 +120,7 @@ pub struct BigEndianDataEncoding;
 
 impl DataEncoding for BigEndianDataEncoding {}
 
+/// EiDataParser attempts to parse if a binary is little or big endian.
 struct EiDataParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiData> for EiDataParser {
@@ -120,6 +145,8 @@ impl From<EiVersion> for u8 {
         src as u8
     }
 }
+
+/// EiVersionParser should only match a single version, the 0x01 byte.
 struct EiVersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiVersion> for EiVersionParser {
@@ -161,6 +188,7 @@ impl From<EiOsAbi> for u8 {
     }
 }
 
+/// EiOsAbiParser parses an EiOsAbi value.
 struct EiOsAbiParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
@@ -189,7 +217,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
     }
 }
 
-/// EIABIVersion represents the abi version and is often left null.
+/// EiAbiVersion represents the abi version and is often left null.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EiAbiVersion {
@@ -203,6 +231,7 @@ impl From<EiAbiVersion> for u8 {
     }
 }
 
+/// EiAbiVersionParser attempts to parse an EiAbiVersion.
 struct EiAbiVersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiAbiVersion> for EiAbiVersionParser {
@@ -237,6 +266,8 @@ impl From<Type> for u16 {
     }
 }
 
+/// TypeParse takes a DataEncoding parameter representing endianness and
+/// attempts to parse a Type.
 pub struct TypeParser<E>
 where
     E: DataEncoding,
@@ -402,6 +433,8 @@ impl std::convert::TryFrom<u16> for Machine {
     }
 }
 
+/// MachineParser implements a machine parser for parsing a 2-byte machine for
+/// each of the given data encodings.
 pub struct MachineParser<E>
 where
     E: DataEncoding,
@@ -458,6 +491,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEn
     }
 }
 
+/// Version represent an ELF version. This should always be one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Version {
@@ -470,6 +504,8 @@ impl From<Version> for u32 {
     }
 }
 
+/// VersionParser attempts to parse a single byte representing the version of
+/// ELF for any given endianness.
 pub struct VersionParser<E>
 where
     E: DataEncoding,
@@ -504,9 +540,9 @@ impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser<BigEndianDataEn
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// EiIdent defines the elf identification fields that define whether the
 /// address size, versions and abi of the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EiIdent {
     pub ei_class: EiClass,
     pub ei_data: EiData,
@@ -516,7 +552,7 @@ pub struct EiIdent {
 }
 
 /// EiIdentParser defines a parser for parsing a raw bitstream into an EiIdent.
-struct EiIdentParser;
+pub struct EiIdentParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiIdent> {
@@ -550,12 +586,11 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// FileHeader represents a program file header, and contains ELF identifaction
 /// information along with sizing, architechture and additional metadata about
 /// other ELF headers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileHeader<AddrWidth> {
-    ei_ident: EiIdent,
     r#type: Type,
     machine: Machine,
     version: Version,
@@ -597,21 +632,6 @@ impl<E> FileHeaderParser<u64, E> {
     }
 }
 
-impl<A, E> FileHeaderParser<A, E> {
-    /// identifier parses the elf magic bytes and class, returning the class if
-    /// the elf file has a valid preamble.
-    pub fn identifier(input: &[u8]) -> Result<EiIdent, FileErr> {
-        EiIdentParser
-            .parse(input)
-            .map(|ms| match ms {
-                MatchStatus::Match((_, ei_ident)) => Some(ei_ident),
-                MatchStatus::NoMatch(_) => None,
-            })
-            .map_err(|_| FileErr::InvalidFile)?
-            .ok_or(FileErr::InvalidFile)
-    }
-}
-
 impl<'a, E> parcel::Parser<'a, &'a [u8], FileHeader<Elf32Addr>> for FileHeaderParser<Elf32Addr, E>
 where
     EiData: From<E>,
@@ -621,7 +641,6 @@ where
     VersionParser<E>: Parser<'a, &'a [u8], Version>,
 {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf32Addr>> {
-        let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
         let encoding = EiData::from(E::default());
 
         parcel::join(
@@ -654,8 +673,7 @@ where
                     (version, (entry_point, (ph_offset, (sh_offset, (flags, two_byte_fields))))),
                 ),
             )| {
-                FileHeader {
-                    ei_ident,
+                (
                     r#type,
                     machine,
                     version,
@@ -663,12 +681,45 @@ where
                     ph_offset,
                     sh_offset,
                     flags,
-                    eh_size: two_byte_fields[0],
-                    phent_size: two_byte_fields[1],
-                    phnum: two_byte_fields[2],
-                    shent_size: two_byte_fields[3],
-                    shnum: two_byte_fields[4],
-                    shstrndx: two_byte_fields[5],
+                    two_byte_fields[0],
+                    two_byte_fields[1],
+                    two_byte_fields[2],
+                    two_byte_fields[3],
+                    two_byte_fields[4],
+                    two_byte_fields[5],
+                )
+            },
+        )
+        .map(
+            move |(
+                r#type,
+                machine,
+                version,
+                entry_point,
+                ph_offset,
+                sh_offset,
+                flags,
+                eh_size,
+                phent_size,
+                phnum,
+                shent_size,
+                shnum,
+                shstrndx,
+            )| {
+                FileHeader {
+                    r#type,
+                    machine,
+                    version,
+                    entry_point,
+                    ph_offset,
+                    sh_offset,
+                    flags,
+                    eh_size,
+                    phent_size,
+                    phnum,
+                    shent_size,
+                    shnum,
+                    shstrndx,
                 }
             },
         )
@@ -685,7 +736,6 @@ where
     VersionParser<E>: Parser<'a, &'a [u8], Version>,
 {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], FileHeader<Elf64Addr>> {
-        let ei_ident = Self::identifier(input).map_err(|e| format!("{:?}", e))?;
         let encoding = EiData::from(E::default());
 
         parcel::join(
@@ -718,8 +768,7 @@ where
                     (version, (entry_point, (ph_offset, (sh_offset, (flags, two_byte_fields))))),
                 ),
             )| {
-                FileHeader {
-                    ei_ident,
+                (
                     r#type,
                     machine,
                     version,
@@ -727,16 +776,285 @@ where
                     ph_offset,
                     sh_offset,
                     flags,
-                    eh_size: two_byte_fields[0],
-                    phent_size: two_byte_fields[1],
-                    phnum: two_byte_fields[2],
-                    shent_size: two_byte_fields[3],
-                    shnum: two_byte_fields[4],
-                    shstrndx: two_byte_fields[5],
+                    two_byte_fields[0],
+                    two_byte_fields[1],
+                    two_byte_fields[2],
+                    two_byte_fields[3],
+                    two_byte_fields[4],
+                    two_byte_fields[5],
+                )
+            },
+        )
+        .map(
+            move |(
+                r#type,
+                machine,
+                version,
+                entry_point,
+                ph_offset,
+                sh_offset,
+                flags,
+                eh_size,
+                phent_size,
+                phnum,
+                shent_size,
+                shnum,
+                shstrndx,
+            )| {
+                FileHeader {
+                    r#type,
+                    machine,
+                    version,
+                    entry_point,
+                    ph_offset,
+                    sh_offset,
+                    flags,
+                    eh_size,
+                    phent_size,
+                    phnum,
+                    shent_size,
+                    shnum,
+                    shstrndx,
                 }
             },
         )
         .parse(&input[16..])
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u32)]
+pub enum ProgramHeaderType {
+    Null = 0x00,
+    Load = 0x01,
+    Dynamic = 0x02,
+    Interp = 0x03,
+    Note = 0x04,
+    ShLib = 0x05,
+    PhDr = 0x06,
+    Tls = 0x07,
+    LoOs = 0x60000000,
+    HiOs = 0x6FFFFFFF,
+    LoProc = 0x70000000,
+    HiProc = 0x7FFFFFFF,
+}
+
+pub struct ProgramHeaderTypeParser<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<'a, E> ProgramHeaderTypeParser<E>
+where
+    E: DataEncoding,
+{
+    fn new() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+
+    fn parse_type(
+        &self,
+        data: EiData,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<'a, &'a [u8], ProgramHeaderType> {
+        parcel::one_of(vec![
+            expect_u32(data, ProgramHeaderType::Null as u32).map(|_| ProgramHeaderType::Null),
+            expect_u32(data, ProgramHeaderType::Load as u32).map(|_| ProgramHeaderType::Load),
+            expect_u32(data, ProgramHeaderType::Dynamic as u32).map(|_| ProgramHeaderType::Dynamic),
+            expect_u32(data, ProgramHeaderType::Interp as u32).map(|_| ProgramHeaderType::Interp),
+            expect_u32(data, ProgramHeaderType::Note as u32).map(|_| ProgramHeaderType::Note),
+            expect_u32(data, ProgramHeaderType::ShLib as u32).map(|_| ProgramHeaderType::ShLib),
+            expect_u32(data, ProgramHeaderType::PhDr as u32).map(|_| ProgramHeaderType::PhDr),
+            expect_u32(data, ProgramHeaderType::Tls as u32).map(|_| ProgramHeaderType::Tls),
+            expect_u32(data, ProgramHeaderType::LoOs as u32).map(|_| ProgramHeaderType::LoOs),
+            expect_u32(data, ProgramHeaderType::HiOs as u32).map(|_| ProgramHeaderType::HiOs),
+            expect_u32(data, ProgramHeaderType::LoProc as u32).map(|_| ProgramHeaderType::LoProc),
+            expect_u32(data, ProgramHeaderType::HiProc as u32).map(|_| ProgramHeaderType::HiProc),
+        ])
+        .parse(input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], ProgramHeaderType>
+    for ProgramHeaderTypeParser<LittleEndianDataEncoding>
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeaderType> {
+        self.parse_type(EiData::Little, input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], ProgramHeaderType>
+    for ProgramHeaderTypeParser<BigEndianDataEncoding>
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeaderType> {
+        self.parse_type(EiData::Big, input)
+    }
+}
+
+/// Represents a Program
+pub trait ProgramHeader {}
+
+/// Program header represents a Elf Program header for the 32-bit arrangement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProgramHeader32Bit {
+    r#type: ProgramHeaderType,
+    offset: u32,
+    vaddr: u32,
+    paddr: u32,
+    filesz: u32,
+    memsz: u32,
+    flags: u32,
+    align: u32,
+}
+
+impl ProgramHeader for ProgramHeader32Bit {}
+
+/// ProgramHeaderParser takes an address width and a data encoding that
+/// represents endianness and implements various parsers for each valid variant.
+pub struct ProgramHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<A, E> ProgramHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    pub fn new() -> Self {
+        Self {
+            address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ProgramHeader32Bit> for ProgramHeaderParser<Elf32Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    ProgramHeaderTypeParser<E>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeader32Bit> {
+        let encoding = EiData::from(E::default());
+        parcel::join(
+            ProgramHeaderTypeParser::<E>::new(),
+            parcel::take_n(match_u32(encoding), 7),
+        )
+        .map(|(r#type, four_byte_fields)| {
+            (
+                r#type,
+                four_byte_fields[0],
+                four_byte_fields[1],
+                four_byte_fields[2],
+                four_byte_fields[3],
+                four_byte_fields[4],
+                four_byte_fields[5],
+                four_byte_fields[6],
+            )
+        })
+        .map(
+            |(r#type, offset, vaddr, paddr, filesz, memsz, flags, align)| ProgramHeader32Bit {
+                r#type,
+                offset,
+                vaddr,
+                paddr,
+                filesz,
+                memsz,
+                flags,
+                align,
+            },
+        )
+        .parse(&input)
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ProgramHeader64Bit> for ProgramHeaderParser<Elf64Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    ProgramHeaderTypeParser<E>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeader64Bit> {
+        let encoding = EiData::from(E::default());
+        parcel::join(
+            ProgramHeaderTypeParser::<E>::new(),
+            parcel::join(match_u32(encoding), parcel::take_n(match_u64(encoding), 6)),
+        )
+        .map(|(r#type, (flags, eight_byte_fields))| {
+            (
+                r#type,
+                flags,
+                eight_byte_fields[0],
+                eight_byte_fields[1],
+                eight_byte_fields[2],
+                eight_byte_fields[3],
+                eight_byte_fields[4],
+                eight_byte_fields[5],
+            )
+        })
+        .map(
+            |(r#type, flags, offset, vaddr, paddr, filesz, memsz, align)| ProgramHeader64Bit {
+                r#type,
+                flags,
+                offset,
+                vaddr,
+                paddr,
+                filesz,
+                memsz,
+                align,
+            },
+        )
+        .parse(&input)
+    }
+}
+
+/// Program header represents a Elf Program header for the 64-bit arrangement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProgramHeader64Bit {
+    r#type: ProgramHeaderType,
+    flags: u32,
+    offset: u64,
+    vaddr: u64,
+    paddr: u64,
+    filesz: u64,
+    memsz: u64,
+    align: u64,
+}
+
+impl ProgramHeader for ProgramHeader64Bit {}
+
+/// ElfHeader captures the full ELF file header into a single struct along
+/// with the Identification information separated from the file header.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ElfHeader<E, PH>
+where
+    E: DataEncoding,
+{
+    pub ei_ident: EiIdent,
+    pub file_header: FileHeader<E>,
+    pub program_header: PH,
+}
+
+impl<E, PH> ElfHeader<E, PH>
+where
+    E: DataEncoding,
+    PH: ProgramHeader,
+{
+    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_header: PH) -> Self {
+        Self {
+            ei_ident,
+            file_header,
+            program_header,
+        }
     }
 }
 
@@ -835,9 +1153,10 @@ fn match_u64<'a>(endianness: EiData) -> impl Parser<'a, &'a [u8], u64> {
 mod tests {
     use super::*;
 
-    macro_rules! generate_elf_header {
+    macro_rules! generate_file_header {
         () => {
             vec![
+                // File Header
                 0x7f, 0x45, 0x4c, 0x46, // magic
                 0x01, // ei_class
                 0x01, // ei_data
@@ -861,6 +1180,22 @@ mod tests {
         };
     }
 
+    macro_rules! generate_program_header {
+        () => {
+            vec![
+                // Program Header
+                0x00, 0x00, 0x00, 0x00, // p_type
+                0x00, 0x00, 0x00, 0x00, // p_offset
+                0x00, 0x00, 0x00, 0x00, // p_vaddr
+                0x00, 0x00, 0x00, 0x00, // p_paddr
+                0x00, 0x00, 0x00, 0x00, // p_filesz
+                0x00, 0x00, 0x00, 0x00, // p_memsz
+                0x00, 0x00, 0x00, 0x00, // p_flags
+                0x00, 0x00, 0x00, 0x00, // p_align
+            ]
+        };
+    }
+
     #[test]
     fn parse_preamble_should_return_expected_results() {
         let thirty_two_bit_input = [
@@ -875,37 +1210,31 @@ mod tests {
 
         assert_eq!(
             Ok(EiClass::ThirtyTwoBit),
-            FileHeaderParser::<Elf32Addr, UnknownDataEncoding>::identifier(&thirty_two_bit_input)
-                .map(|ident| ident.ei_class)
+            EiIdentParser
+                .parse(&thirty_two_bit_input)
+                .map(|ms| ms.unwrap().ei_class)
         );
         assert_eq!(
             Ok(EiClass::SixtyFourBit),
-            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&sixty_four_bit_input)
-                .map(|ident| ident.ei_class)
+            EiIdentParser
+                .parse(&sixty_four_bit_input)
+                .map(|ms| ms.unwrap().ei_class)
         );
-        assert!(
-            FileHeaderParser::<Elf64Addr, UnknownDataEncoding>::identifier(&invalid_input).is_err()
-        );
+        assert!(EiIdentParser
+            .parse(&invalid_input)
+            .and_then(|ms| match ms {
+                MatchStatus::Match(_) => Err("invalid input shouldn't match".to_string()),
+                MatchStatus::NoMatch(_) => Ok(()),
+            })
+            .is_ok());
     }
 
     #[test]
-    fn parse_known_good_header() {
-        #[rustfmt::skip]
-        let input: Vec<u8> = generate_elf_header!();
+    fn parse_known_good_file_header() {
+        let input: Vec<u8> = generate_file_header!();
 
         assert_eq!(
-            FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
-                .parse(&input)
-                .unwrap()
-                .unwrap(),
-            FileHeader::<u32> {
-                ei_ident: EiIdent {
-                    ei_class: EiClass::ThirtyTwoBit,
-                    ei_data: EiData::Little,
-                    ei_version: EiVersion::One,
-                    ei_osabi: EiOsAbi::SysV,
-                    ei_abiversion: EiAbiVersion::One,
-                },
+            FileHeader::<Elf32Addr> {
                 r#type: Type::None,
                 machine: Machine::X386,
                 version: Version::One,
@@ -919,7 +1248,33 @@ mod tests {
                 shent_size: 1,
                 shnum: 1,
                 shstrndx: 1
-            }
+            },
+            FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
+                .parse(&input)
+                .unwrap()
+                .unwrap(),
+        )
+    }
+
+    #[test]
+    fn parse_known_good_program_header() {
+        let input: Vec<u8> = generate_program_header!();
+
+        assert_eq!(
+            ProgramHeader32Bit {
+                r#type: ProgramHeaderType::Null,
+                offset: 0x00,
+                vaddr: 0x00,
+                paddr: 0x00,
+                filesz: 0x00,
+                memsz: 0x00,
+                flags: 0x00,
+                align: 0x00,
+            },
+            ProgramHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
+                .parse(&input)
+                .unwrap()
+                .unwrap()
         )
     }
 }

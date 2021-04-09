@@ -2,8 +2,18 @@ use parcel::parsers::byte::expect_byte;
 use parcel::prelude::v1::*;
 
 // Type Metadata
+
+/// AddressWidth represents a variant of address size. This should, for the
+/// most part be either u32 or u64 for ELF.
+pub trait AddressWidth {}
+
 type Elf32Addr = u32;
+
+impl AddressWidth for Elf32Addr {}
+
 type Elf64Addr = u64;
+
+impl AddressWidth for Elf64Addr {}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FileErr {
@@ -30,6 +40,18 @@ pub enum EiClass {
 impl From<EiClass> for u8 {
     fn from(src: EiClass) -> Self {
         src as u8
+    }
+}
+
+impl From<Elf32Addr> for EiClass {
+    fn from(_: Elf32Addr) -> Self {
+        EiClass::ThirtyTwoBit
+    }
+}
+
+impl From<Elf64Addr> for EiClass {
+    fn from(_: Elf64Addr) -> Self {
+        EiClass::SixtyFourBit
     }
 }
 
@@ -811,13 +833,22 @@ pub struct ProgramHeader32Bit {
 
 impl ProgramHeader for ProgramHeader32Bit {}
 
-#[derive(Default)]
-pub struct ProgramHeaderParser<A, E> {
+/// ProgramHeaderParser takes an address width and a data encoding that
+/// represents endianness and implements various parsers for each valid variant.
+pub struct ProgramHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
     address_width: std::marker::PhantomData<A>,
     endianness: std::marker::PhantomData<E>,
 }
 
-impl<A, E> ProgramHeaderParser<A, E> {
+impl<A, E> ProgramHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
     pub fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
@@ -924,7 +955,10 @@ impl ProgramHeader for ProgramHeader64Bit {}
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ElfHeader<E, PH> {
+pub struct ElfHeader<E, PH>
+where
+    E: DataEncoding,
+{
     pub ei_ident: EiIdent,
     pub file_header: FileHeader<E>,
     pub program_header: PH,
@@ -932,6 +966,7 @@ pub struct ElfHeader<E, PH> {
 
 impl<E, PH> ElfHeader<E, PH>
 where
+    E: DataEncoding,
     PH: ProgramHeader,
 {
     pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_header: PH) -> Self {

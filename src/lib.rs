@@ -55,6 +55,8 @@ impl From<Elf64Addr> for EiClass {
     }
 }
 
+/// EiClassParser functiona as a wrapper struct for parsing binary data into
+/// an EiClass.
 struct EiClassParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiClass> for EiClassParser {
@@ -118,6 +120,7 @@ pub struct BigEndianDataEncoding;
 
 impl DataEncoding for BigEndianDataEncoding {}
 
+/// EiDataParser attempts to parse if a binary is little or big endian.
 struct EiDataParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiData> for EiDataParser {
@@ -142,6 +145,8 @@ impl From<EiVersion> for u8 {
         src as u8
     }
 }
+
+/// EiVersionParser should only match a single version, the 0x01 byte.
 struct EiVersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiVersion> for EiVersionParser {
@@ -183,6 +188,7 @@ impl From<EiOsAbi> for u8 {
     }
 }
 
+/// EiOsAbiParser parses an EiOsAbi value.
 struct EiOsAbiParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
@@ -211,7 +217,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
     }
 }
 
-/// EIABIVersion represents the abi version and is often left null.
+/// EiAbiVersion represents the abi version and is often left null.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EiAbiVersion {
@@ -225,6 +231,7 @@ impl From<EiAbiVersion> for u8 {
     }
 }
 
+/// EiAbiVersionParser attempts to parse an EiAbiVersion.
 struct EiAbiVersionParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiAbiVersion> for EiAbiVersionParser {
@@ -259,6 +266,8 @@ impl From<Type> for u16 {
     }
 }
 
+/// TypeParse takes a DataEncoding parameter representing endianness and
+/// attempts to parse a Type.
 pub struct TypeParser<E>
 where
     E: DataEncoding,
@@ -424,6 +433,8 @@ impl std::convert::TryFrom<u16> for Machine {
     }
 }
 
+/// MachineParser implements a machine parser for parsing a 2-byte machine for
+/// each of the given data encodings.
 pub struct MachineParser<E>
 where
     E: DataEncoding,
@@ -480,6 +491,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEn
     }
 }
 
+/// Version represent an ELF version. This should always be one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Version {
@@ -492,6 +504,8 @@ impl From<Version> for u32 {
     }
 }
 
+/// VersionParser attempts to parse a single byte representing the version of
+/// ELF for any given endianness.
 pub struct VersionParser<E>
 where
     E: DataEncoding,
@@ -526,9 +540,9 @@ impl<'a> parcel::Parser<'a, &'a [u8], Version> for VersionParser<BigEndianDataEn
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// EiIdent defines the elf identification fields that define whether the
 /// address size, versions and abi of the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EiIdent {
     pub ei_class: EiClass,
     pub ei_data: EiData,
@@ -572,10 +586,10 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// FileHeader represents a program file header, and contains ELF identifaction
 /// information along with sizing, architechture and additional metadata about
 /// other ELF headers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileHeader<AddrWidth> {
     r#type: Type,
     machine: Machine,

@@ -1073,9 +1073,10 @@ fn match_u64<'a>(endianness: EiData) -> impl Parser<'a, &'a [u8], u64> {
 mod tests {
     use super::*;
 
-    macro_rules! generate_elf_header {
+    macro_rules! generate_file_header {
         () => {
             vec![
+                // File Header
                 0x7f, 0x45, 0x4c, 0x46, // magic
                 0x01, // ei_class
                 0x01, // ei_data
@@ -1095,6 +1096,22 @@ mod tests {
                 0x01, 0x00, // shentsize
                 0x01, 0x00, // shnum
                 0x01, 0x00, // shstrndx
+            ]
+        };
+    }
+
+    macro_rules! generate_program_header {
+        () => {
+            vec![
+                // Program Header
+                0x00, 0x00, 0x00, 0x00, // p_type
+                0x00, 0x00, 0x00, 0x00, // p_offset
+                0x00, 0x00, 0x00, 0x00, // p_vaddr
+                0x00, 0x00, 0x00, 0x00, // p_paddr
+                0x00, 0x00, 0x00, 0x00, // p_filesz
+                0x00, 0x00, 0x00, 0x00, // p_memsz
+                0x00, 0x00, 0x00, 0x00, // p_flags
+                0x00, 0x00, 0x00, 0x00, // p_align
             ]
         };
     }
@@ -1134,14 +1151,9 @@ mod tests {
 
     #[test]
     fn parse_known_good_file_header() {
-        #[rustfmt::skip]
-        let input: Vec<u8> = generate_elf_header!();
+        let input: Vec<u8> = generate_file_header!();
 
         assert_eq!(
-            FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
-                .parse(&input)
-                .unwrap()
-                .unwrap(),
             FileHeader::<Elf32Addr> {
                 r#type: Type::None,
                 machine: Machine::X386,
@@ -1156,7 +1168,33 @@ mod tests {
                 shent_size: 1,
                 shnum: 1,
                 shstrndx: 1
-            }
+            },
+            FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
+                .parse(&input)
+                .unwrap()
+                .unwrap(),
+        )
+    }
+
+    #[test]
+    fn parse_known_good_program_header() {
+        let input: Vec<u8> = generate_program_header!();
+
+        assert_eq!(
+            ProgramHeader32Bit {
+                r#type: ProgramHeaderType::Null,
+                offset: 0x00,
+                vaddr: 0x00,
+                paddr: 0x00,
+                filesz: 0x00,
+                memsz: 0x00,
+                flags: 0x00,
+                align: 0x00,
+            },
+            ProgramHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
+                .parse(&input)
+                .unwrap()
+                .unwrap()
         )
     }
 }

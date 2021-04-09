@@ -659,6 +659,39 @@ where
                     (version, (entry_point, (ph_offset, (sh_offset, (flags, two_byte_fields))))),
                 ),
             )| {
+                (
+                    r#type,
+                    machine,
+                    version,
+                    entry_point,
+                    ph_offset,
+                    sh_offset,
+                    flags,
+                    two_byte_fields[0],
+                    two_byte_fields[1],
+                    two_byte_fields[2],
+                    two_byte_fields[3],
+                    two_byte_fields[4],
+                    two_byte_fields[5],
+                )
+            },
+        )
+        .map(
+            move |(
+                r#type,
+                machine,
+                version,
+                entry_point,
+                ph_offset,
+                sh_offset,
+                flags,
+                eh_size,
+                phent_size,
+                phnum,
+                shent_size,
+                shnum,
+                shstrndx,
+            )| {
                 FileHeader {
                     r#type,
                     machine,
@@ -667,12 +700,12 @@ where
                     ph_offset,
                     sh_offset,
                     flags,
-                    eh_size: two_byte_fields[0],
-                    phent_size: two_byte_fields[1],
-                    phnum: two_byte_fields[2],
-                    shent_size: two_byte_fields[3],
-                    shnum: two_byte_fields[4],
-                    shstrndx: two_byte_fields[5],
+                    eh_size,
+                    phent_size,
+                    phnum,
+                    shent_size,
+                    shnum,
+                    shstrndx,
                 }
             },
         )
@@ -721,6 +754,39 @@ where
                     (version, (entry_point, (ph_offset, (sh_offset, (flags, two_byte_fields))))),
                 ),
             )| {
+                (
+                    r#type,
+                    machine,
+                    version,
+                    entry_point,
+                    ph_offset,
+                    sh_offset,
+                    flags,
+                    two_byte_fields[0],
+                    two_byte_fields[1],
+                    two_byte_fields[2],
+                    two_byte_fields[3],
+                    two_byte_fields[4],
+                    two_byte_fields[5],
+                )
+            },
+        )
+        .map(
+            move |(
+                r#type,
+                machine,
+                version,
+                entry_point,
+                ph_offset,
+                sh_offset,
+                flags,
+                eh_size,
+                phent_size,
+                phnum,
+                shent_size,
+                shnum,
+                shstrndx,
+            )| {
                 FileHeader {
                     r#type,
                     machine,
@@ -729,12 +795,12 @@ where
                     ph_offset,
                     sh_offset,
                     flags,
-                    eh_size: two_byte_fields[0],
-                    phent_size: two_byte_fields[1],
-                    phnum: two_byte_fields[2],
-                    shent_size: two_byte_fields[3],
-                    shnum: two_byte_fields[4],
-                    shstrndx: two_byte_fields[5],
+                    eh_size,
+                    phent_size,
+                    phnum,
+                    shent_size,
+                    shnum,
+                    shstrndx,
                 }
             },
         )

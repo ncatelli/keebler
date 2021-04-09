@@ -730,7 +730,7 @@ pub enum ProgramHeaderType {
     Note = 0x04,
     ShLib = 0x05,
     PhDr = 0x06,
-    TLS = 0x07,
+    Tls = 0x07,
     LoOs = 0x60000000,
     HiOs = 0x6FFFFFFF,
     LoProc = 0x70000000,
@@ -767,7 +767,7 @@ where
             expect_u32(data, ProgramHeaderType::Note as u32).map(|_| ProgramHeaderType::Note),
             expect_u32(data, ProgramHeaderType::ShLib as u32).map(|_| ProgramHeaderType::ShLib),
             expect_u32(data, ProgramHeaderType::PhDr as u32).map(|_| ProgramHeaderType::PhDr),
-            expect_u32(data, ProgramHeaderType::TLS as u32).map(|_| ProgramHeaderType::TLS),
+            expect_u32(data, ProgramHeaderType::Tls as u32).map(|_| ProgramHeaderType::Tls),
             expect_u32(data, ProgramHeaderType::LoOs as u32).map(|_| ProgramHeaderType::LoOs),
             expect_u32(data, ProgramHeaderType::HiOs as u32).map(|_| ProgramHeaderType::HiOs),
             expect_u32(data, ProgramHeaderType::LoProc as u32).map(|_| ProgramHeaderType::LoProc),
@@ -811,6 +811,7 @@ pub struct ProgramHeader32Bit {
 
 impl ProgramHeader for ProgramHeader32Bit {}
 
+#[derive(Default)]
 pub struct ProgramHeaderParser<A, E> {
     address_width: std::marker::PhantomData<A>,
     endianness: std::marker::PhantomData<E>,

@@ -538,7 +538,7 @@ pub struct EiIdent {
 }
 
 /// EiIdentParser defines a parser for parsing a raw bitstream into an EiIdent.
-struct EiIdentParser;
+pub struct EiIdentParser;
 
 impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], EiIdent> {

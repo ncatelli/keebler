@@ -720,19 +720,224 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u32)]
+pub enum ProgramHeaderType {
+    Null = 0x00,
+    Load = 0x01,
+    Dynamic = 0x02,
+    Interp = 0x03,
+    Note = 0x04,
+    ShLib = 0x05,
+    PhDr = 0x06,
+    TLS = 0x07,
+    LoOs = 0x60000000,
+    HiOs = 0x6FFFFFFF,
+    LoProc = 0x70000000,
+    HiProc = 0x7FFFFFFF,
+}
+
+pub struct ProgramHeaderTypeParser<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<'a, E> ProgramHeaderTypeParser<E>
+where
+    E: DataEncoding,
+{
+    fn new() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+
+    fn parse_type(
+        &self,
+        data: EiData,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<'a, &'a [u8], ProgramHeaderType> {
+        parcel::one_of(vec![
+            expect_u32(data, ProgramHeaderType::Null as u32).map(|_| ProgramHeaderType::Null),
+            expect_u32(data, ProgramHeaderType::Load as u32).map(|_| ProgramHeaderType::Load),
+            expect_u32(data, ProgramHeaderType::Dynamic as u32).map(|_| ProgramHeaderType::Dynamic),
+            expect_u32(data, ProgramHeaderType::Interp as u32).map(|_| ProgramHeaderType::Interp),
+            expect_u32(data, ProgramHeaderType::Note as u32).map(|_| ProgramHeaderType::Note),
+            expect_u32(data, ProgramHeaderType::ShLib as u32).map(|_| ProgramHeaderType::ShLib),
+            expect_u32(data, ProgramHeaderType::PhDr as u32).map(|_| ProgramHeaderType::PhDr),
+            expect_u32(data, ProgramHeaderType::TLS as u32).map(|_| ProgramHeaderType::TLS),
+            expect_u32(data, ProgramHeaderType::LoOs as u32).map(|_| ProgramHeaderType::LoOs),
+            expect_u32(data, ProgramHeaderType::HiOs as u32).map(|_| ProgramHeaderType::HiOs),
+            expect_u32(data, ProgramHeaderType::LoProc as u32).map(|_| ProgramHeaderType::LoProc),
+            expect_u32(data, ProgramHeaderType::HiProc as u32).map(|_| ProgramHeaderType::HiProc),
+        ])
+        .parse(input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], ProgramHeaderType>
+    for ProgramHeaderTypeParser<LittleEndianDataEncoding>
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeaderType> {
+        self.parse_type(EiData::Little, input)
+    }
+}
+
+impl<'a> parcel::Parser<'a, &'a [u8], ProgramHeaderType>
+    for ProgramHeaderTypeParser<BigEndianDataEncoding>
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeaderType> {
+        self.parse_type(EiData::Big, input)
+    }
+}
+
+/// Represents a Program
+pub trait ProgramHeader {}
+
+/// Program header represents a Elf Program header for the 32-bit arrangement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProgramHeader32Bit {
+    r#type: ProgramHeaderType,
+    offset: u32,
+    vaddr: u32,
+    paddr: u32,
+    filesz: u32,
+    memsz: u32,
+    flags: u32,
+    align: u32,
+}
+
+impl ProgramHeader for ProgramHeader32Bit {}
+
+pub struct ProgramHeaderParser<A, E> {
+    address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<A, E> ProgramHeaderParser<A, E> {
+    pub fn new() -> Self {
+        Self {
+            address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ProgramHeader32Bit> for ProgramHeaderParser<Elf32Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    ProgramHeaderTypeParser<E>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeader32Bit> {
+        let encoding = EiData::from(E::default());
+        parcel::join(
+            ProgramHeaderTypeParser::<E>::new(),
+            parcel::take_n(match_u32(encoding), 7),
+        )
+        .map(|(r#type, four_byte_fields)| {
+            (
+                r#type,
+                four_byte_fields[0],
+                four_byte_fields[1],
+                four_byte_fields[2],
+                four_byte_fields[3],
+                four_byte_fields[4],
+                four_byte_fields[5],
+                four_byte_fields[6],
+            )
+        })
+        .map(
+            |(r#type, offset, vaddr, paddr, filesz, memsz, flags, align)| ProgramHeader32Bit {
+                r#type,
+                offset,
+                vaddr,
+                paddr,
+                filesz,
+                memsz,
+                flags,
+                align,
+            },
+        )
+        .parse(&input)
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ProgramHeader64Bit> for ProgramHeaderParser<Elf64Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    ProgramHeaderTypeParser<E>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ProgramHeader64Bit> {
+        let encoding = EiData::from(E::default());
+        parcel::join(
+            ProgramHeaderTypeParser::<E>::new(),
+            parcel::join(match_u32(encoding), parcel::take_n(match_u64(encoding), 6)),
+        )
+        .map(|(r#type, (flags, eight_byte_fields))| {
+            (
+                r#type,
+                flags,
+                eight_byte_fields[0],
+                eight_byte_fields[1],
+                eight_byte_fields[2],
+                eight_byte_fields[3],
+                eight_byte_fields[4],
+                eight_byte_fields[5],
+            )
+        })
+        .map(
+            |(r#type, flags, offset, vaddr, paddr, filesz, memsz, align)| ProgramHeader64Bit {
+                r#type,
+                flags,
+                offset,
+                vaddr,
+                paddr,
+                filesz,
+                memsz,
+                align,
+            },
+        )
+        .parse(&input)
+    }
+}
+
+/// Program header represents a Elf Program header for the 64-bit arrangement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProgramHeader64Bit {
+    r#type: ProgramHeaderType,
+    flags: u32,
+    offset: u64,
+    vaddr: u64,
+    paddr: u64,
+    filesz: u64,
+    memsz: u64,
+    align: u64,
+}
+
+impl ProgramHeader for ProgramHeader64Bit {}
+
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ElfHeader<E> {
+pub struct ElfHeader<E, PH> {
     pub ei_ident: EiIdent,
     pub file_header: FileHeader<E>,
+    pub program_header: PH,
 }
 
-impl<E> ElfHeader<E> {
-    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>) -> Self {
+impl<E, PH> ElfHeader<E, PH>
+where
+    PH: ProgramHeader,
+{
+    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_header: PH) -> Self {
         Self {
             ei_ident,
             file_header,
+            program_header,
         }
     }
 }

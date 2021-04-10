@@ -770,6 +770,12 @@ impl<E> FileHeaderParser<u32, E> {
 impl<E> FileHeaderParser<u64, E> {
     #[allow(dead_code)]
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<A, E> Default for FileHeaderParser<A, E> {
+    fn default() -> Self {
         Self {
             address_width: std::marker::PhantomData,
             endianness: std::marker::PhantomData,

@@ -736,19 +736,19 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
 /// other ELF headers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileHeader<AddrWidth> {
-    r#type: Type,
-    machine: Machine,
-    version: Version,
-    entry_point: AddrWidth,
-    ph_offset: AddrWidth,
-    sh_offset: AddrWidth,
-    flags: u32,
-    eh_size: u16,
-    phent_size: u16,
-    phnum: u16,
-    shent_size: u16,
-    shnum: u16,
-    shstrndx: u16,
+    pub r#type: Type,
+    pub machine: Machine,
+    pub version: Version,
+    pub entry_point: AddrWidth,
+    pub ph_offset: AddrWidth,
+    pub sh_offset: AddrWidth,
+    pub flags: u32,
+    pub eh_size: u16,
+    pub phent_size: u16,
+    pub phnum: u16,
+    pub shent_size: u16,
+    pub shnum: u16,
+    pub shstrndx: u16,
 }
 
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
@@ -759,7 +759,7 @@ pub struct FileHeaderParser<A, E> {
 
 impl<E> FileHeaderParser<u32, E> {
     #[allow(dead_code)]
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
             endianness: std::marker::PhantomData,
@@ -769,7 +769,7 @@ impl<E> FileHeaderParser<u32, E> {
 
 impl<E> FileHeaderParser<u64, E> {
     #[allow(dead_code)]
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
             endianness: std::marker::PhantomData,

@@ -30,14 +30,29 @@ fn read_file(filename: &str) -> Result<(), String> {
 
 fn print_formatted_header(input: &[u8]) -> Result<(), String> {
     let ident = EiIdentParser.parse(input)?.unwrap();
+    let fh = FileHeaderParser::<u64, LittleEndianDataEncoding>::new()
+        .parse(&input)?
+        .unwrap();
     println!(
         "ELF Header:
-  Class:       {}
-  Data:        {}
-  Version:     {}
-  OS/ABI:      {}
-  ABI Version: {}",
-        ident.ei_class, ident.ei_data, ident.ei_version, ident.ei_osabi, ident.ei_abiversion
+  Class:               {}
+  Data:                {}
+  Version:             {}
+  OS/ABI:              {}
+  ABI Version:         {}
+  Type:                {}
+  Machine:             {}
+  Version:             {}
+  Entry point address: 0x{:x}",
+        ident.ei_class,
+        ident.ei_data,
+        ident.ei_version,
+        ident.ei_osabi,
+        ident.ei_abiversion,
+        fh.r#type,
+        fh.machine,
+        fh.version,
+        fh.entry_point
     );
 
     Ok(())

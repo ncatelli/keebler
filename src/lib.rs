@@ -445,6 +445,7 @@ pub enum Machine {
     AARCH64 = 0xB7,
     RISCV = 0xF3,
     BPF = 0xF7,
+    MCS6502 = 0xFE,
     WDC65C817 = 0x101,
 }
 
@@ -506,9 +507,68 @@ impl std::convert::TryFrom<u16> for Machine {
             0xB9 => Ok(Machine::AARCH64),
             0xFA => Ok(Machine::RISCV),
             0xFB => Ok(Machine::BPF),
+            0xFE => Ok(Machine::MCS6502),
             0x101 => Ok(Machine::WDC65C817),
             _ => Err(format!("cannot convert {} to Machine variant", value)),
         }
+    }
+}
+
+impl std::fmt::Display for Machine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            Machine::None => "None",
+            Machine::M32 => "WE32100",
+            Machine::SPARC => "Sparc",
+            Machine::X386 => "Intel 80386",
+            Machine::M68k => "MC68000",
+            Machine::M88k => "MC88000",
+            Machine::IntelMCU => "Intel MCU",
+            Machine::Intel80860 => "Intel 80860",
+            Machine::MIPS => "MIPS R3000",
+            Machine::S370 => "IBM System/370",
+            Machine::MIPSRS3LE => "MIPS R4000 big-endian",
+            Machine::PARISC => "HPPA",
+            Machine::I960 => "Intel 80960",
+            Machine::PPC => "PowerPC",
+            Machine::PPC64 => "PowerPC64",
+            Machine::S390 => "IBM S/390",
+            Machine::V800 => "Renesas V850 (using RH850 ABI)",
+            Machine::FR20 => "Fujitsu FR20",
+            Machine::RH32 => "TRW RH32",
+            Machine::RCE => "Motorola M*Core",
+            Machine::ARM => "ARM",
+            Machine::Alpha => "Digital Alpha (old)",
+            Machine::SH => "Renesas / SuperH SH",
+            Machine::SPARCV9 => "Sparc v9",
+            Machine::Tricore => "Siemens Tricore",
+            Machine::ARC => "ARC",
+            Machine::H8300 => "Renesas H8/300",
+            Machine::H8_300H => "Renesas H8/300H",
+            Machine::H8s => "Renesas H8S",
+            Machine::H8500 => "Renesas H8/500",
+            Machine::IA64 => "Intel IA-64",
+            Machine::MIPSX => "Stanford MIPS-X",
+            Machine::Coldfire => "Motorola Coldfire",
+            Machine::M68HC12 => "Motorola MC68HC12 Microcontroller",
+            Machine::MMA => "Fujitsu Multimedia Accellerator",
+            Machine::PCP => "Siemens PCP",
+            Machine::NCPU => "Sony nCPU embedded RISC processor",
+            Machine::NDR1 => "Denso NDR1 microprocessor",
+            Machine::Starcore => "Motorola Star*Core processor",
+            Machine::ME16 => "Toyota ME16 processor",
+            Machine::ST100 => "STMicroelectronics ST100 processor",
+            Machine::TinyJ => "Advanced Logic Corp. TinyJ embedded processor",
+            Machine::X86_64 => "Advanced Micro Devices X86-64",
+            Machine::S320C600 => "Texas Instruments TMS320C6000 DSP family",
+            Machine::AARCH64 => "AArch64",
+            Machine::RISCV => "RISC-V",
+            Machine::BPF => "Berkeley Packet Filter",
+            Machine::MCS6502 => "MOS Technology MCS 6502 processor",
+            Machine::WDC65C817 => "WDC 65816/65C816",
+        };
+
+        write!(f, "{}", repr)
     }
 }
 

@@ -37,6 +37,17 @@ pub enum EiClass {
     SixtyFourBit = 0x02,
 }
 
+impl std::fmt::Display for EiClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            EiClass::ThirtyTwoBit => "ELF32",
+            EiClass::SixtyFourBit => "ELF64",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 impl From<EiClass> for u8 {
     fn from(src: EiClass) -> Self {
         src as u8
@@ -76,6 +87,17 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiClass> for EiClassParser {
 pub enum EiData {
     Little = 0x01,
     Big = 0x02,
+}
+
+impl std::fmt::Display for EiData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            EiData::Little => "little endian",
+            EiData::Big => "big endian",
+        };
+
+        write!(f, "{}", repr)
+    }
 }
 
 impl From<EiData> for u8 {
@@ -137,7 +159,13 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiData> for EiDataParser {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EiVersion {
-    One = 1,
+    One = 0x01,
+}
+
+impl std::fmt::Display for EiVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self as u8)
+    }
 }
 
 impl From<EiVersion> for u8 {
@@ -217,12 +245,45 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
     }
 }
 
+impl std::fmt::Display for EiOsAbi {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            EiOsAbi::SysV => "UNIX - System V",
+            EiOsAbi::HPUX => "UNIX - HP-UX",
+            EiOsAbi::NetBSD => "UNIX - NetBSD",
+            EiOsAbi::Linux => "Linux C6000",
+            EiOsAbi::GNUHurd => "Unix - GNU",
+            EiOsAbi::Solaris => "UNIX - Solaris",
+            EiOsAbi::AIX => "UNIX - AIX",
+            EiOsAbi::IRIX => "UNIX - IRIX",
+            EiOsAbi::FreeBSD => "UNIX - FreeBSD",
+            EiOsAbi::Tru64 => "UNIX - TRU64",
+            EiOsAbi::Novell => "Novell - Modesto",
+            EiOsAbi::OpenBSD => "Unix - OpenBSD",
+            EiOsAbi::OpenVMS => "VMS - OpenVMS",
+            EiOsAbi::NonStop => "HP - Non-Stop Kernel",
+            EiOsAbi::Aros => "Aros",
+            EiOsAbi::Fenix => "FenixOS",
+            EiOsAbi::CloudABI => "Nuxi CloudABI",
+            EiOsAbi::OpenVOS => "Stratus Technologies OpenVOS",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 /// EiAbiVersion represents the abi version and is often left null.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EiAbiVersion {
     Zero = 0x00,
     One = 0x01,
+}
+
+impl std::fmt::Display for EiAbiVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self as u32)
+    }
 }
 
 impl From<EiAbiVersion> for u8 {
@@ -301,6 +362,24 @@ where
     }
 }
 
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            Type::None => "None (None)",
+            Type::Rel => "REL (Relocatable file)",
+            Type::Exec => "EXEC (Executable file)",
+            Type::Dyn => "DYN (Shared object file)",
+            Type::Core => "CORE (Core file)",
+            Type::LoOs => "OS Specific: (LoOs)",
+            Type::HiOs => "OS Specific: (HiOs)",
+            Type::LoProc => "Processor Specific: (LoProc)",
+            Type::HiProc => " Processor Specific: (HiProc)",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<LittleEndianDataEncoding> {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
         self.parse_type(EiData::Little, input)
@@ -366,6 +445,7 @@ pub enum Machine {
     AARCH64 = 0xB7,
     RISCV = 0xF3,
     BPF = 0xF7,
+    MCS6502 = 0xFE,
     WDC65C817 = 0x101,
 }
 
@@ -427,9 +507,68 @@ impl std::convert::TryFrom<u16> for Machine {
             0xB9 => Ok(Machine::AARCH64),
             0xFA => Ok(Machine::RISCV),
             0xFB => Ok(Machine::BPF),
+            0xFE => Ok(Machine::MCS6502),
             0x101 => Ok(Machine::WDC65C817),
             _ => Err(format!("cannot convert {} to Machine variant", value)),
         }
+    }
+}
+
+impl std::fmt::Display for Machine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            Machine::None => "None",
+            Machine::M32 => "WE32100",
+            Machine::SPARC => "Sparc",
+            Machine::X386 => "Intel 80386",
+            Machine::M68k => "MC68000",
+            Machine::M88k => "MC88000",
+            Machine::IntelMCU => "Intel MCU",
+            Machine::Intel80860 => "Intel 80860",
+            Machine::MIPS => "MIPS R3000",
+            Machine::S370 => "IBM System/370",
+            Machine::MIPSRS3LE => "MIPS R4000 big-endian",
+            Machine::PARISC => "HPPA",
+            Machine::I960 => "Intel 80960",
+            Machine::PPC => "PowerPC",
+            Machine::PPC64 => "PowerPC64",
+            Machine::S390 => "IBM S/390",
+            Machine::V800 => "Renesas V850 (using RH850 ABI)",
+            Machine::FR20 => "Fujitsu FR20",
+            Machine::RH32 => "TRW RH32",
+            Machine::RCE => "Motorola M*Core",
+            Machine::ARM => "ARM",
+            Machine::Alpha => "Digital Alpha (old)",
+            Machine::SH => "Renesas / SuperH SH",
+            Machine::SPARCV9 => "Sparc v9",
+            Machine::Tricore => "Siemens Tricore",
+            Machine::ARC => "ARC",
+            Machine::H8300 => "Renesas H8/300",
+            Machine::H8_300H => "Renesas H8/300H",
+            Machine::H8s => "Renesas H8S",
+            Machine::H8500 => "Renesas H8/500",
+            Machine::IA64 => "Intel IA-64",
+            Machine::MIPSX => "Stanford MIPS-X",
+            Machine::Coldfire => "Motorola Coldfire",
+            Machine::M68HC12 => "Motorola MC68HC12 Microcontroller",
+            Machine::MMA => "Fujitsu Multimedia Accellerator",
+            Machine::PCP => "Siemens PCP",
+            Machine::NCPU => "Sony nCPU embedded RISC processor",
+            Machine::NDR1 => "Denso NDR1 microprocessor",
+            Machine::Starcore => "Motorola Star*Core processor",
+            Machine::ME16 => "Toyota ME16 processor",
+            Machine::ST100 => "STMicroelectronics ST100 processor",
+            Machine::TinyJ => "Advanced Logic Corp. TinyJ embedded processor",
+            Machine::X86_64 => "Advanced Micro Devices X86-64",
+            Machine::S320C600 => "Texas Instruments TMS320C6000 DSP family",
+            Machine::AARCH64 => "AArch64",
+            Machine::RISCV => "RISC-V",
+            Machine::BPF => "Berkeley Packet Filter",
+            Machine::MCS6502 => "MOS Technology MCS 6502 processor",
+            Machine::WDC65C817 => "WDC 65816/65C816",
+        };
+
+        write!(f, "{}", repr)
     }
 }
 
@@ -496,6 +635,12 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEn
 #[repr(u32)]
 pub enum Version {
     One = 0x01,
+}
+
+impl std::fmt::Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self as u32)
+    }
 }
 
 impl From<Version> for u32 {
@@ -591,19 +736,19 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
 /// other ELF headers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileHeader<AddrWidth> {
-    r#type: Type,
-    machine: Machine,
-    version: Version,
-    entry_point: AddrWidth,
-    ph_offset: AddrWidth,
-    sh_offset: AddrWidth,
-    flags: u32,
-    eh_size: u16,
-    phent_size: u16,
-    phnum: u16,
-    shent_size: u16,
-    shnum: u16,
-    shstrndx: u16,
+    pub r#type: Type,
+    pub machine: Machine,
+    pub version: Version,
+    pub entry_point: AddrWidth,
+    pub ph_offset: AddrWidth,
+    pub sh_offset: AddrWidth,
+    pub flags: u32,
+    pub eh_size: u16,
+    pub phent_size: u16,
+    pub phnum: u16,
+    pub shent_size: u16,
+    pub shnum: u16,
+    pub shstrndx: u16,
 }
 
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
@@ -614,7 +759,7 @@ pub struct FileHeaderParser<A, E> {
 
 impl<E> FileHeaderParser<u32, E> {
     #[allow(dead_code)]
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             address_width: std::marker::PhantomData,
             endianness: std::marker::PhantomData,
@@ -624,7 +769,13 @@ impl<E> FileHeaderParser<u32, E> {
 
 impl<E> FileHeaderParser<u64, E> {
     #[allow(dead_code)]
-    fn new() -> Self {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<A, E> Default for FileHeaderParser<A, E> {
+    fn default() -> Self {
         Self {
             address_width: std::marker::PhantomData,
             endianness: std::marker::PhantomData,
@@ -930,6 +1081,16 @@ where
     E: DataEncoding,
 {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<A, E> Default for ProgramHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    fn default() -> Self {
         Self {
             address_width: std::marker::PhantomData,
             endianness: std::marker::PhantomData,

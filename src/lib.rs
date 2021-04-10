@@ -997,6 +997,16 @@ where
     E: DataEncoding,
 {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<A, E> Default for ProgramHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    fn default() -> Self {
         Self {
             address_width: std::marker::PhantomData,
             endianness: std::marker::PhantomData,

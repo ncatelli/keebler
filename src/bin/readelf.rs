@@ -29,7 +29,7 @@ fn read_file(filename: &str) -> Result<(), String> {
 }
 
 fn print_formatted_header(input: &[u8]) -> Result<(), String> {
-    let ident = EiIdentParser.parse(input).unwrap().unwrap();
+    let ident = EiIdentParser.parse(input)?.unwrap();
     println!(
         "ELF Header:
   Class:       {}

@@ -362,6 +362,24 @@ where
     }
 }
 
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            Type::None => "None (None)",
+            Type::Rel => "REL (Relocatable file)",
+            Type::Exec => "EXEC (Executable file)",
+            Type::Dyn => "DYN (Shared object file)",
+            Type::Core => "CORE (Core file)",
+            Type::LoOs => "OS Specific: (LoOs)",
+            Type::HiOs => "OS Specific: (HiOs)",
+            Type::LoProc => "Processor Specific: (LoProc)",
+            Type::HiProc => " Processor Specific: (HiProc)",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 impl<'a> parcel::Parser<'a, &'a [u8], Type> for TypeParser<LittleEndianDataEncoding> {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], Type> {
         self.parse_type(EiData::Little, input)

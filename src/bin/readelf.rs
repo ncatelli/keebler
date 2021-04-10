@@ -23,11 +23,22 @@ fn read_file(filename: &str) -> Result<(), String> {
 
     let mut contents = Vec::new();
     match f.read_to_end(&mut contents) {
-        Ok(_) => {
-            let ident = EiIdentParser.parse(&contents).unwrap().unwrap();
-            println!("{:#?}", ident);
-            Ok(())
-        }
+        Ok(_) => print_formatted_header(&contents),
         Err(error) => Err(format!("error: {}", error)),
     }
+}
+
+fn print_formatted_header(input: &[u8]) -> Result<(), String> {
+    let ident = EiIdentParser.parse(input).unwrap().unwrap();
+    println!(
+        "ELF Header:
+  Class:       {}
+  Data:        {}
+  Version:     {}
+  OS/ABI:      {}
+  ABI Version: {}",
+        ident.ei_class, ident.ei_data, ident.ei_version, ident.ei_osabi, ident.ei_abiversion
+    );
+
+    Ok(())
 }

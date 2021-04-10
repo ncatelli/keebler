@@ -37,6 +37,17 @@ pub enum EiClass {
     SixtyFourBit = 0x02,
 }
 
+impl std::fmt::Display for EiClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            EiClass::ThirtyTwoBit => "ELF32",
+            EiClass::SixtyFourBit => "ELF64",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 impl From<EiClass> for u8 {
     fn from(src: EiClass) -> Self {
         src as u8
@@ -76,6 +87,17 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiClass> for EiClassParser {
 pub enum EiData {
     Little = 0x01,
     Big = 0x02,
+}
+
+impl std::fmt::Display for EiData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            EiData::Little => "little endian",
+            EiData::Big => "big endian",
+        };
+
+        write!(f, "{}", repr)
+    }
 }
 
 impl From<EiData> for u8 {
@@ -137,7 +159,13 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiData> for EiDataParser {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EiVersion {
-    One = 1,
+    One = 0x01,
+}
+
+impl std::fmt::Display for EiVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self as u8)
+    }
 }
 
 impl From<EiVersion> for u8 {
@@ -217,12 +245,45 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiOsAbi> for EiOsAbiParser {
     }
 }
 
+impl std::fmt::Display for EiOsAbi {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            EiOsAbi::SysV => "UNIX - System V",
+            EiOsAbi::HPUX => "UNIX - HP-UX",
+            EiOsAbi::NetBSD => "UNIX - NetBSD",
+            EiOsAbi::Linux => "Linux C6000",
+            EiOsAbi::GNUHurd => "Unix - GNU",
+            EiOsAbi::Solaris => "UNIX - Solaris",
+            EiOsAbi::AIX => "UNIX - AIX",
+            EiOsAbi::IRIX => "UNIX - IRIX",
+            EiOsAbi::FreeBSD => "UNIX - FreeBSD",
+            EiOsAbi::Tru64 => "UNIX - TRU64",
+            EiOsAbi::Novell => "Novell - Modesto",
+            EiOsAbi::OpenBSD => "Unix - OpenBSD",
+            EiOsAbi::OpenVMS => "VMS - OpenVMS",
+            EiOsAbi::NonStop => "HP - Non-Stop Kernel",
+            EiOsAbi::Aros => "Aros",
+            EiOsAbi::Fenix => "FenixOS",
+            EiOsAbi::CloudABI => "Nuxi CloudABI",
+            EiOsAbi::OpenVOS => "Stratus Technologies OpenVOS",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 /// EiAbiVersion represents the abi version and is often left null.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum EiAbiVersion {
     Zero = 0x00,
     One = 0x01,
+}
+
+impl std::fmt::Display for EiAbiVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self as u32)
+    }
 }
 
 impl From<EiAbiVersion> for u8 {
@@ -496,6 +557,12 @@ impl<'a> parcel::Parser<'a, &'a [u8], Machine> for MachineParser<BigEndianDataEn
 #[repr(u32)]
 pub enum Version {
     One = 0x01,
+}
+
+impl std::fmt::Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self as u32)
+    }
 }
 
 impl From<Version> for u32 {

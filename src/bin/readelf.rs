@@ -23,16 +23,46 @@ fn read_file(filename: &str) -> Result<(), String> {
 
     let mut contents = Vec::new();
     match f.read_to_end(&mut contents) {
-        Ok(_) => print_formatted_header(&contents),
+        Ok(_) => parse_and_print_formatted_header(&contents),
         Err(error) => Err(format!("error: {}", error)),
     }
 }
 
-fn print_formatted_header(input: &[u8]) -> Result<(), String> {
+fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
     let ident = EiIdentParser.parse(input)?.unwrap();
-    let fh = FileHeaderParser::<u64, LittleEndianDataEncoding>::new()
-        .parse(&input)?
-        .unwrap();
+    match (ident.ei_class, ident.ei_data) {
+        (EiClass::ThirtyTwoBit, EiData::Little) => {
+            let fh = FileHeaderParser::<u32, LittleEndianDataEncoding>::new()
+                .parse(&input)?
+                .unwrap();
+
+            print_formatted_header(ident, fh);
+        }
+        (EiClass::ThirtyTwoBit, EiData::Big) => {
+            let fh = FileHeaderParser::<u32, BigEndianDataEncoding>::new()
+                .parse(&input)?
+                .unwrap();
+            print_formatted_header(ident, fh);
+        }
+        (EiClass::SixtyFourBit, EiData::Little) => {
+            let fh = FileHeaderParser::<u64, LittleEndianDataEncoding>::new()
+                .parse(&input)?
+                .unwrap();
+
+            print_formatted_header(ident, fh);
+        }
+        (EiClass::SixtyFourBit, EiData::Big) => {
+            let fh = FileHeaderParser::<u64, BigEndianDataEncoding>::new()
+                .parse(&input)?
+                .unwrap();
+            print_formatted_header(ident, fh);
+        }
+    };
+
+    Ok(())
+}
+
+fn print_formatted_header<A: std::fmt::LowerHex>(ident: EiIdent, header: FileHeader<A>) {
     println!(
         "ELF Header:
   Class:               {}
@@ -49,11 +79,9 @@ fn print_formatted_header(input: &[u8]) -> Result<(), String> {
         ident.ei_version,
         ident.ei_osabi,
         ident.ei_abiversion,
-        fh.r#type,
-        fh.machine,
-        fh.version,
-        fh.entry_point
+        header.r#type,
+        header.machine,
+        header.version,
+        header.entry_point
     );
-
-    Ok(())
 }

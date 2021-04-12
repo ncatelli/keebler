@@ -1193,6 +1193,40 @@ pub struct ProgramHeader64Bit {
 
 impl ProgramHeader for ProgramHeader64Bit {}
 
+/// ShType reprents all representable formats of the sh_type filed of a section
+/// header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ShType {
+    Null = 0x00,
+}
+
+/// ShFlags reprents all representable formats of the sh_flags filed of a
+/// section header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ShFlags {
+    Write = 0x01,
+}
+
+/// Section header represents a Elf Program header for the 32-bit arrangement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SectionHeader<A>
+where
+    A: AddressWidth,
+{
+    pub sh_name: A,
+    pub sh_type: ShType,
+    pub sh_flags: ShFlags,
+    pub sh_addr: A,
+    pub sh_offset: A,
+    pub sh_size: A,
+    pub sh_link: u32,
+    pub sh_info: u32,
+    pub sh_addr_align: A,
+    pub sh_entsize: A,
+}
+
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, Copy, PartialEq)]

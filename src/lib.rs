@@ -1213,27 +1213,31 @@ pub struct ShTypeParser<A> {
     address_width: std::marker::PhantomData<A>,
 }
 
-impl<'a> ShTypeParser<Elf32Addr> {
-    fn parse_type(
-        &self,
-        data: EiData,
-        input: &'a [u8],
-    ) -> parcel::ParseResult<'a, &'a [u8], ShType32Bit> {
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShType32Bit> for ShTypeParser<E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShType32Bit> {
+        let encoding = EiData::from(E::default());
+
         parcel::one_of(vec![
-            expect_u32(data, ShType32Bit::Null as u32).map(|_| ShType32Bit::Null)
+            expect_u64(encoding, ShType32Bit::Null as u64).map(|_| ShType32Bit::Null)
         ])
         .parse(input)
     }
 }
 
-impl<'a> ShTypeParser<Elf64Addr> {
-    fn parse_type(
-        &self,
-        data: EiData,
-        input: &'a [u8],
-    ) -> parcel::ParseResult<'a, &'a [u8], ShType64Bit> {
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShType64Bit> for ShTypeParser<E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShType64Bit> {
+        let encoding = EiData::from(E::default());
+
         parcel::one_of(vec![
-            expect_u64(data, ShType64Bit::Null as u64).map(|_| ShType64Bit::Null)
+            expect_u64(encoding, ShType64Bit::Null as u64).map(|_| ShType64Bit::Null)
         ])
         .parse(input)
     }
@@ -1245,6 +1249,48 @@ impl<'a> ShTypeParser<Elf64Addr> {
 #[repr(u32)]
 pub enum ShFlags {
     Write = 0x01,
+}
+
+pub struct ShFlagsParser<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<E> ShFlagsParser<E>
+where
+    E: DataEncoding,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<E> Default for ShFlagsParser<E>
+where
+    E: DataEncoding,
+{
+    fn default() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShFlags> for ShFlagsParser<E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShFlags> {
+        let encoding = EiData::from(E::default());
+
+        parcel::one_of(vec![
+            expect_u32(encoding, ShFlags::Write as u32).map(|_| ShFlags::Write)
+        ])
+        .parse(input)
+    }
 }
 
 /// Section header represents a Elf Program header.

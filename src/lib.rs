@@ -1193,6 +1193,314 @@ pub struct ProgramHeader64Bit {
 
 impl ProgramHeader for ProgramHeader64Bit {}
 
+/// ShType32Bit reprents all representable formats of the sh_type filed of a section
+/// header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ShType32Bit {
+    Null = 0x00,
+}
+
+/// ShType64Bit reprents all representable formats of the sh_type filed of a section
+/// header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u64)]
+pub enum ShType64Bit {
+    Null = 0x00,
+}
+
+pub struct ShTypeParser<E, A>
+where
+    E: DataEncoding,
+    A: AddressWidth,
+{
+    endianness: std::marker::PhantomData<E>,
+    address_width: std::marker::PhantomData<A>,
+}
+
+impl<E, A> ShTypeParser<E, A>
+where
+    E: DataEncoding,
+    A: AddressWidth,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<E, A> Default for ShTypeParser<E, A>
+where
+    E: DataEncoding,
+    A: AddressWidth,
+{
+    fn default() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+            address_width: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShType32Bit> for ShTypeParser<E, Elf32Addr>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShType32Bit> {
+        let encoding = EiData::from(E::default());
+
+        parcel::one_of(vec![
+            expect_u64(encoding, ShType32Bit::Null as u64).map(|_| ShType32Bit::Null)
+        ])
+        .parse(input)
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShType64Bit> for ShTypeParser<E, Elf64Addr>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShType64Bit> {
+        let encoding = EiData::from(E::default());
+
+        parcel::one_of(vec![
+            expect_u64(encoding, ShType64Bit::Null as u64).map(|_| ShType64Bit::Null)
+        ])
+        .parse(input)
+    }
+}
+
+/// ShFlags reprents all representable formats of the sh_flags filed of a
+/// section header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ShFlags {
+    Write = 0x01,
+}
+
+pub struct ShFlagsParser<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<E> ShFlagsParser<E>
+where
+    E: DataEncoding,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<E> Default for ShFlagsParser<E>
+where
+    E: DataEncoding,
+{
+    fn default() -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShFlags> for ShFlagsParser<E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShFlags> {
+        let encoding = EiData::from(E::default());
+
+        parcel::one_of(vec![
+            expect_u32(encoding, ShFlags::Write as u32).map(|_| ShFlags::Write)
+        ])
+        .parse(input)
+    }
+}
+
+/// Section header represents a Elf Program header.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SectionHeader<A, SHT>
+where
+    A: AddressWidth,
+{
+    pub sh_name: A,
+    pub sh_type: SHT,
+    pub sh_flags: ShFlags,
+    pub sh_addr: A,
+    pub sh_offset: A,
+    pub sh_size: A,
+    pub sh_link: u32,
+    pub sh_info: u32,
+    pub sh_addr_align: A,
+    pub sh_entsize: A,
+}
+
+pub struct SectionHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<A, E> SectionHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<A, E> Default for SectionHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    fn default() -> Self {
+        Self {
+            address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], SectionHeader<Elf32Addr, ShType32Bit>>
+    for SectionHeaderParser<Elf32Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(
+        &self,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<'a, &'a [u8], SectionHeader<Elf32Addr, ShType32Bit>> {
+        let encoding = EiData::from(E::default());
+
+        parcel::join(
+            match_u32(encoding),
+            parcel::join(
+                ShTypeParser::<E, Elf32Addr>::new(),
+                parcel::join(
+                    ShFlagsParser::<E>::new(),
+                    parcel::take_n(match_u32(encoding), 7),
+                ),
+            ),
+        )
+        .map(|(sh_name, (sh_type, (sh_flags, u32_seq)))| {
+            (
+                sh_name, sh_type, sh_flags, u32_seq[0], u32_seq[1], u32_seq[2], u32_seq[3],
+                u32_seq[4], u32_seq[5], u32_seq[6],
+            )
+        })
+        .map(
+            |(
+                sh_name,
+                sh_type,
+                sh_flags,
+                sh_addr,
+                sh_offset,
+                sh_size,
+                sh_link,
+                sh_info,
+                sh_addr_align,
+                sh_entsize,
+            )| SectionHeader {
+                sh_name,
+                sh_type,
+                sh_flags,
+                sh_addr,
+                sh_offset,
+                sh_size,
+                sh_link,
+                sh_info,
+                sh_addr_align,
+                sh_entsize,
+            },
+        )
+        .parse(input)
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], SectionHeader<Elf64Addr, ShType64Bit>>
+    for SectionHeaderParser<Elf64Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn parse(
+        &self,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<'a, &'a [u8], SectionHeader<Elf64Addr, ShType64Bit>> {
+        let encoding = EiData::from(E::default());
+
+        parcel::join(
+            match_u64(encoding),
+            parcel::join(
+                ShTypeParser::<E, Elf64Addr>::new(),
+                parcel::join(
+                    ShFlagsParser::<E>::new(),
+                    parcel::join(
+                        parcel::take_n(match_u64(encoding), 3),
+                        parcel::join(
+                            parcel::take_n(match_u32(encoding), 2),
+                            parcel::take_n(match_u64(encoding), 2),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        .map(
+            |(sh_name, (sh_type, (sh_flags, (u64_seq_one, (u32_seq_one, u64_seq_two)))))| {
+                (
+                    sh_name,
+                    sh_type,
+                    sh_flags,
+                    u64_seq_one[0],
+                    u64_seq_one[1],
+                    u64_seq_one[2],
+                    u32_seq_one[0],
+                    u32_seq_one[1],
+                    u64_seq_two[0],
+                    u64_seq_two[1],
+                )
+            },
+        )
+        .map(
+            |(
+                sh_name,
+                sh_type,
+                sh_flags,
+                sh_addr,
+                sh_offset,
+                sh_size,
+                sh_link,
+                sh_info,
+                sh_addr_align,
+                sh_entsize,
+            )| SectionHeader {
+                sh_name,
+                sh_type,
+                sh_flags,
+                sh_addr,
+                sh_offset,
+                sh_size,
+                sh_link,
+                sh_info,
+                sh_addr_align,
+                sh_entsize,
+            },
+        )
+        .parse(input)
+    }
+}
+
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1257,6 +1565,21 @@ fn expect_u32<'a>(endianness: EiData, expected: u32) -> impl Parser<'a, &'a [u8]
     move |input: &'a [u8]| {
         let preparse_input = input;
         match match_u32(endianness).parse(input) {
+            Ok(MatchStatus::Match((rem, v))) if v == expected => {
+                Ok(MatchStatus::Match((rem, expected)))
+            }
+            _ => Ok(MatchStatus::NoMatch(preparse_input)),
+        }
+    }
+}
+
+/// Matches a single provided static u64, returning a match if the next
+/// eight bytes in the array match the expected u64. Otherwise, a `NoMatch` is
+/// returned.
+fn expect_u64<'a>(endianness: EiData, expected: u64) -> impl Parser<'a, &'a [u8], u64> {
+    move |input: &'a [u8]| {
+        let preparse_input = input;
+        match match_u64(endianness).parse(input) {
             Ok(MatchStatus::Match((rem, v))) if v == expected => {
                 Ok(MatchStatus::Match((rem, expected)))
             }

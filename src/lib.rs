@@ -1503,14 +1503,14 @@ where
 
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ElfHeader<E, PH>
 where
     E: DataEncoding,
 {
     pub ei_ident: EiIdent,
     pub file_header: FileHeader<E>,
-    pub program_header: PH,
+    pub program_headers: Vec<PH>,
 }
 
 impl<E, PH> ElfHeader<E, PH>
@@ -1518,11 +1518,11 @@ where
     E: DataEncoding,
     PH: ProgramHeader,
 {
-    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_header: PH) -> Self {
+    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_headers: Vec<PH>) -> Self {
         Self {
             ei_ident,
             file_header,
-            program_header,
+            program_headers,
         }
     }
 }

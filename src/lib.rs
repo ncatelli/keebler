@@ -1504,26 +1504,77 @@ where
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ElfHeader<E, PH>
+pub struct ElfHeader<A, E, PH>
 where
+    A: AddressWidth,
     E: DataEncoding,
 {
+    address_width: std::marker::PhantomData<A>,
     pub ei_ident: EiIdent,
     pub file_header: FileHeader<E>,
     pub program_headers: Vec<PH>,
 }
 
-impl<E, PH> ElfHeader<E, PH>
+impl<A, E, PH> ElfHeader<A, E, PH>
 where
+    A: AddressWidth,
     E: DataEncoding,
     PH: ProgramHeader,
 {
     pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_headers: Vec<PH>) -> Self {
         Self {
+            address_width: std::marker::PhantomData,
             ei_ident,
             file_header,
             program_headers,
         }
+    }
+}
+
+pub struct ElfHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<A, E> ElfHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<A, E> Default for ElfHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    fn default() -> Self {
+        Self {
+            address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>>
+    for ElfHeaderParser<Elf64Addr, E>
+where
+    EiData: From<E>,
+    E: DataEncoding + Default + 'static,
+    ProgramHeaderTypeParser<E>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(
+        &self,
+        _input: &'a [u8],
+    ) -> parcel::ParseResult<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>> {
+        todo!()
     }
 }
 

@@ -45,10 +45,10 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
             print_formatted_header(ident, eh.file_header);
         }
         (EiClass::SixtyFourBit, EiData::Little) => {
-            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
+            let eh = FileHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-            print_formatted_header(ident, eh.file_header);
+            print_formatted_header(ident, eh);
         }
         (EiClass::SixtyFourBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
@@ -61,18 +61,30 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
-fn print_formatted_header<A: std::fmt::LowerHex>(ident: EiIdent, header: FileHeader<A>) {
+fn print_formatted_header<A: std::fmt::LowerHex + std::fmt::Display>(
+    ident: EiIdent,
+    header: FileHeader<A>,
+) {
     println!(
         "ELF Header:
-  Class:               {}
-  Data:                {}
-  Version:             {}
-  OS/ABI:              {}
-  ABI Version:         {}
-  Type:                {}
-  Machine:             {}
-  Version:             {}
-  Entry point address: 0x{:x}",
+  Class:                             {}
+  Data:                              {}
+  Version:                           {}
+  OS/ABI:                            {}
+  ABI Version:                       {}
+  Type:                              {}
+  Machine:                           {}
+  Version:                           {}
+  Entry point address:               0x{:x}
+  Start of program headers:          {}
+  Start of section headers:          {}
+  Flags:                             0x{:x}
+  Size of this header:              ` {} (bytes)
+  Size of program headers:           {} (bytes)
+  Number of program headers:         {}
+  Size of section headers:           {} (bytes)
+  Number of section headers:         {}
+  Section header string table index: {}",
         ident.ei_class,
         ident.ei_data,
         ident.ei_version,
@@ -81,6 +93,15 @@ fn print_formatted_header<A: std::fmt::LowerHex>(ident: EiIdent, header: FileHea
         header.r#type,
         header.machine,
         header.version,
-        header.entry_point
+        header.entry_point,
+        header.ph_offset,
+        header.sh_offset,
+        header.flags,
+        header.eh_size,
+        header.phent_size,
+        header.phnum,
+        header.shent_size,
+        header.shnum,
+        header.shstrndx
     );
 }

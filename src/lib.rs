@@ -988,6 +988,9 @@ pub enum ProgramHeaderType {
     HiOs = 0x6FFFFFFF,
     LoProc = 0x70000000,
     HiProc = 0x7FFFFFFF,
+    GNUEHFRAME = 0x6474E550,
+    GNUSTACK = 0x6474E551,
+    GNURELRO = 0x6474E552,
 }
 
 pub struct ProgramHeaderTypeParser<E>
@@ -1025,6 +1028,12 @@ where
             expect_u32(data, ProgramHeaderType::HiOs as u32).map(|_| ProgramHeaderType::HiOs),
             expect_u32(data, ProgramHeaderType::LoProc as u32).map(|_| ProgramHeaderType::LoProc),
             expect_u32(data, ProgramHeaderType::HiProc as u32).map(|_| ProgramHeaderType::HiProc),
+            expect_u32(data, ProgramHeaderType::GNUEHFRAME as u32)
+                .map(|_| ProgramHeaderType::GNUEHFRAME),
+            expect_u32(data, ProgramHeaderType::GNUSTACK as u32)
+                .map(|_| ProgramHeaderType::GNUSTACK),
+            expect_u32(data, ProgramHeaderType::GNURELRO as u32)
+                .map(|_| ProgramHeaderType::GNURELRO),
         ])
         .parse(input)
     }

@@ -752,12 +752,19 @@ pub struct FileHeader<AddrWidth> {
 }
 
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
-pub struct FileHeaderParser<A, E> {
+pub struct FileHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
     address_width: std::marker::PhantomData<A>,
     endianness: std::marker::PhantomData<E>,
 }
 
-impl<E> FileHeaderParser<u32, E> {
+impl<E> FileHeaderParser<u32, E>
+where
+    E: DataEncoding,
+{
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
@@ -767,14 +774,21 @@ impl<E> FileHeaderParser<u32, E> {
     }
 }
 
-impl<E> FileHeaderParser<u64, E> {
+impl<E> FileHeaderParser<u64, E>
+where
+    E: DataEncoding,
+{
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<A, E> Default for FileHeaderParser<A, E> {
+impl<A, E> Default for FileHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
     fn default() -> Self {
         Self {
             address_width: std::marker::PhantomData,
@@ -988,6 +1002,33 @@ pub enum ProgramHeaderType {
     HiOs = 0x6FFFFFFF,
     LoProc = 0x70000000,
     HiProc = 0x7FFFFFFF,
+    GNUEHFRAME = 0x6474E550,
+    GNUSTACK = 0x6474E551,
+    GNURELRO = 0x6474E552,
+}
+
+impl std::fmt::Display for ProgramHeaderType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            ProgramHeaderType::Null => "Null",
+            ProgramHeaderType::Load => "Load",
+            ProgramHeaderType::Dynamic => "Dynamic",
+            ProgramHeaderType::Interp => "Interp",
+            ProgramHeaderType::Note => "Note",
+            ProgramHeaderType::ShLib => "SH_LIB",
+            ProgramHeaderType::PhDr => "PH_DR",
+            ProgramHeaderType::Tls => "TLS",
+            ProgramHeaderType::LoOs => "LO_OS",
+            ProgramHeaderType::HiOs => "HI_OS",
+            ProgramHeaderType::LoProc => "LO_PROC",
+            ProgramHeaderType::HiProc => "HI_PROC",
+            ProgramHeaderType::GNUEHFRAME => "GNU_EH_FRAME",
+            ProgramHeaderType::GNUSTACK => "GNU_STACK",
+            ProgramHeaderType::GNURELRO => "GNU_RELRO",
+        };
+
+        write!(f, "{}", repr)
+    }
 }
 
 pub struct ProgramHeaderTypeParser<E>
@@ -1025,6 +1066,12 @@ where
             expect_u32(data, ProgramHeaderType::HiOs as u32).map(|_| ProgramHeaderType::HiOs),
             expect_u32(data, ProgramHeaderType::LoProc as u32).map(|_| ProgramHeaderType::LoProc),
             expect_u32(data, ProgramHeaderType::HiProc as u32).map(|_| ProgramHeaderType::HiProc),
+            expect_u32(data, ProgramHeaderType::GNUEHFRAME as u32)
+                .map(|_| ProgramHeaderType::GNUEHFRAME),
+            expect_u32(data, ProgramHeaderType::GNUSTACK as u32)
+                .map(|_| ProgramHeaderType::GNUSTACK),
+            expect_u32(data, ProgramHeaderType::GNURELRO as u32)
+                .map(|_| ProgramHeaderType::GNURELRO),
         ])
         .parse(input)
     }
@@ -1052,14 +1099,14 @@ pub trait ProgramHeader {}
 /// Program header represents a Elf Program header for the 32-bit arrangement.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ProgramHeader32Bit {
-    r#type: ProgramHeaderType,
-    offset: u32,
-    vaddr: u32,
-    paddr: u32,
-    filesz: u32,
-    memsz: u32,
-    flags: u32,
-    align: u32,
+    pub r#type: ProgramHeaderType,
+    pub offset: u32,
+    pub vaddr: u32,
+    pub paddr: u32,
+    pub filesz: u32,
+    pub memsz: u32,
+    pub flags: u32,
+    pub align: u32,
 }
 
 impl ProgramHeader for ProgramHeader32Bit {}
@@ -1181,14 +1228,14 @@ where
 /// Program header represents a Elf Program header for the 64-bit arrangement.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ProgramHeader64Bit {
-    r#type: ProgramHeaderType,
-    flags: u32,
-    offset: u64,
-    vaddr: u64,
-    paddr: u64,
-    filesz: u64,
-    memsz: u64,
-    align: u64,
+    pub r#type: ProgramHeaderType,
+    pub flags: u32,
+    pub offset: u64,
+    pub vaddr: u64,
+    pub paddr: u64,
+    pub filesz: u64,
+    pub memsz: u64,
+    pub align: u64,
 }
 
 impl ProgramHeader for ProgramHeader64Bit {}
@@ -1504,25 +1551,115 @@ where
 /// ElfHeader captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ElfHeader<E, PH>
+pub struct ElfHeader<A, E, PH>
 where
+    A: AddressWidth,
     E: DataEncoding,
 {
+    endianness: std::marker::PhantomData<E>,
     pub ei_ident: EiIdent,
-    pub file_header: FileHeader<E>,
+    pub file_header: FileHeader<A>,
     pub program_headers: Vec<PH>,
 }
 
-impl<E, PH> ElfHeader<E, PH>
+impl<A, E, PH> ElfHeader<A, E, PH>
 where
+    A: AddressWidth,
     E: DataEncoding,
     PH: ProgramHeader,
 {
-    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_headers: Vec<PH>) -> Self {
+    pub fn new(ei_ident: EiIdent, file_header: FileHeader<A>, program_headers: Vec<PH>) -> Self {
         Self {
+            endianness: std::marker::PhantomData,
             ei_ident,
             file_header,
             program_headers,
+        }
+    }
+}
+
+pub struct ElfHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
+}
+
+impl<A, E> ElfHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<A, E> Default for ElfHeaderParser<A, E>
+where
+    A: AddressWidth,
+    E: DataEncoding,
+{
+    fn default() -> Self {
+        Self {
+            address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader<Elf32Addr, E, ProgramHeader32Bit>>
+    for ElfHeaderParser<Elf32Addr, E>
+where
+    E: DataEncoding + Default + 'static,
+    FileHeaderParser<Elf32Addr, E>: Parser<'a, &'a [u8], FileHeader<Elf32Addr>>,
+    ProgramHeaderParser<Elf32Addr, E>: Parser<'a, &'a [u8], ProgramHeader32Bit>,
+{
+    fn parse(
+        &self,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<'a, &'a [u8], ElfHeader<Elf32Addr, E, ProgramHeader32Bit>> {
+        let preparse_input = &input[0..];
+        match EiIdentParser.parse(&input)? {
+            MatchStatus::Match((_, ei)) => FileHeaderParser::<Elf32Addr, E>::new()
+                .and_then(|fh| {
+                    let phnum = fh.phnum as usize;
+                    ProgramHeaderParser::<Elf32Addr, E>::new()
+                        .take_n(phnum)
+                        .map(move |phs| (fh, phs))
+                })
+                .map(move |(fh, phs)| ElfHeader::new(ei, fh, phs))
+                .parse(&preparse_input),
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }
+    }
+}
+
+impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>>
+    for ElfHeaderParser<Elf64Addr, E>
+where
+    E: DataEncoding + Default + 'static,
+    FileHeaderParser<Elf64Addr, E>: Parser<'a, &'a [u8], FileHeader<Elf64Addr>>,
+    ProgramHeaderParser<Elf64Addr, E>: Parser<'a, &'a [u8], ProgramHeader64Bit>,
+{
+    fn parse(
+        &self,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>> {
+        let preparse_input = &input[0..];
+        match EiIdentParser.parse(&input)? {
+            MatchStatus::Match((_, ei)) => FileHeaderParser::<Elf64Addr, E>::new()
+                .and_then(|fh| {
+                    let phnum = fh.phnum as usize;
+                    ProgramHeaderParser::<Elf64Addr, E>::new()
+                        .take_n(phnum)
+                        .map(move |phs| (fh, phs))
+                })
+                .map(move |(fh, phs)| ElfHeader::new(ei, fh, phs))
+                .parse(&preparse_input),
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
         }
     }
 }

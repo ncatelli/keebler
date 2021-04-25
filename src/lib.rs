@@ -1509,9 +1509,9 @@ where
     A: AddressWidth,
     E: DataEncoding,
 {
-    address_width: std::marker::PhantomData<A>,
+    endianness: std::marker::PhantomData<E>,
     pub ei_ident: EiIdent,
-    pub file_header: FileHeader<E>,
+    pub file_header: FileHeader<A>,
     pub program_headers: Vec<PH>,
 }
 
@@ -1521,9 +1521,9 @@ where
     E: DataEncoding,
     PH: ProgramHeader,
 {
-    pub fn new(ei_ident: EiIdent, file_header: FileHeader<E>, program_headers: Vec<PH>) -> Self {
+    pub fn new(ei_ident: EiIdent, file_header: FileHeader<A>, program_headers: Vec<PH>) -> Self {
         Self {
-            address_width: std::marker::PhantomData,
+            endianness: std::marker::PhantomData,
             ei_ident,
             file_header,
             program_headers,
@@ -1563,18 +1563,37 @@ where
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>>
-    for ElfHeaderParser<Elf64Addr, E>
+impl<'a>
+    parcel::Parser<'a, &'a [u8], ElfHeader<Elf64Addr, LittleEndianDataEncoding, ProgramHeader64Bit>>
+    for ElfHeaderParser<Elf64Addr, LittleEndianDataEncoding>
 where
-    EiData: From<E>,
-    E: DataEncoding + Default + 'static,
-    ProgramHeaderTypeParser<E>: Parser<'a, &'a [u8], ProgramHeaderType>,
+    ProgramHeaderTypeParser<LittleEndianDataEncoding>: Parser<'a, &'a [u8], ProgramHeaderType>,
 {
     fn parse(
         &self,
-        _input: &'a [u8],
-    ) -> parcel::ParseResult<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>> {
-        todo!()
+        input: &'a [u8],
+    ) -> parcel::ParseResult<
+        'a,
+        &'a [u8],
+        ElfHeader<Elf64Addr, LittleEndianDataEncoding, ProgramHeader64Bit>,
+    > {
+        let ms = parcel::join(
+            EiIdentParser,
+            FileHeaderParser::<Elf64Addr, LittleEndianDataEncoding>::new().and_then(|fh| {
+                let phnum = fh.phnum as usize;
+                ProgramHeaderParser::<Elf64Addr, LittleEndianDataEncoding>::new()
+                    .take_n(phnum)
+                    .map(move |phs| (fh, phs))
+            }),
+        )
+        .parse(&input)?;
+
+        match ms {
+            MatchStatus::Match((rem, (ei, (fh, phs)))) => {
+                Ok(MatchStatus::Match((rem, ElfHeader::new(ei, fh, phs))))
+            }
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }
     }
 }
 

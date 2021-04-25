@@ -32,30 +32,29 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
     let ident = EiIdentParser.parse(input)?.unwrap();
     match (ident.ei_class, ident.ei_data) {
         (EiClass::ThirtyTwoBit, EiData::Little) => {
-            let fh = FileHeaderParser::<u32, LittleEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
 
-            print_formatted_header(ident, fh);
+            print_formatted_header(ident, eh.file_header);
         }
         (EiClass::ThirtyTwoBit, EiData::Big) => {
-            let fh = FileHeaderParser::<u32, BigEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-            print_formatted_header(ident, fh);
+            print_formatted_header(ident, eh.file_header);
         }
         (EiClass::SixtyFourBit, EiData::Little) => {
-            let fh = FileHeaderParser::<u64, LittleEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-
-            print_formatted_header(ident, fh);
+            print_formatted_header(ident, eh.file_header);
         }
         (EiClass::SixtyFourBit, EiData::Big) => {
-            let fh = FileHeaderParser::<u64, BigEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-            print_formatted_header(ident, fh);
+            print_formatted_header(ident, eh.file_header);
         }
     };
 

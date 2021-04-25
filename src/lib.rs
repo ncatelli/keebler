@@ -1007,6 +1007,30 @@ pub enum ProgramHeaderType {
     GNURELRO = 0x6474E552,
 }
 
+impl std::fmt::Display for ProgramHeaderType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            ProgramHeaderType::Null => "Null",
+            ProgramHeaderType::Load => "Load",
+            ProgramHeaderType::Dynamic => "Dynamic",
+            ProgramHeaderType::Interp => "Interp",
+            ProgramHeaderType::Note => "Note",
+            ProgramHeaderType::ShLib => "SH_LIB",
+            ProgramHeaderType::PhDr => "PH_DR",
+            ProgramHeaderType::Tls => "TLS",
+            ProgramHeaderType::LoOs => "LO_OS",
+            ProgramHeaderType::HiOs => "HI_OS",
+            ProgramHeaderType::LoProc => "LO_PROC",
+            ProgramHeaderType::HiProc => "HI_PROC",
+            ProgramHeaderType::GNUEHFRAME => "GNU_EH_FRAME",
+            ProgramHeaderType::GNUSTACK => "GNU_STACK",
+            ProgramHeaderType::GNURELRO => "GNU_RELRO",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 pub struct ProgramHeaderTypeParser<E>
 where
     E: DataEncoding,

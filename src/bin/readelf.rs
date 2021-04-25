@@ -37,25 +37,28 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
                 .unwrap();
 
             print_formatted_file_header(ident, eh.file_header);
+            print_formatted_32bit_program_headers(&eh.program_headers);
         }
         (EiClass::ThirtyTwoBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u32, BigEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
             print_formatted_file_header(ident, eh.file_header);
+            print_formatted_32bit_program_headers(&eh.program_headers);
         }
         (EiClass::SixtyFourBit, EiData::Little) => {
             let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
             print_formatted_file_header(ident, eh.file_header);
-            print_formatted_program_headers(&eh.program_headers);
+            print_formatted_64bit_program_headers(&eh.program_headers);
         }
         (EiClass::SixtyFourBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u64, BigEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
             print_formatted_file_header(ident, eh.file_header);
+            print_formatted_64bit_program_headers(&eh.program_headers);
         }
     };
 
@@ -107,16 +110,44 @@ fn print_formatted_file_header<A: std::fmt::LowerHex + std::fmt::Display>(
     );
 }
 
-fn print_formatted_program_headers(headers: &[ProgramHeader64Bit]) {
+fn print_formatted_32bit_program_headers(headers: &[ProgramHeader32Bit]) {
     println!(
         "\nProgram Headers:
-  {:12}{:12}{:12}{:12}{:12}{:12}{:12}{:12}",
+  {: <16}{: <12}{: <12}{: <12}{: <12}{: <12}{: <12}{: <12}",
         "Type", "Offset", "VirtAddr", "PhysAddr", "FileSize", "MemSize", "Flags", "Align"
     );
     for h in headers.iter() {
         println!(
-            "  {:12?}{:12?}{:12?}{:12?}{:12?}{:12?}{:12?}{:12?}",
-            h.r#type, h.offset, h.vaddr, h.paddr, h.filesz, h.memsz, h.flags, h.align
+            "  {: <16}0x{: <10}0x{: <10}0x{: <10}0x{: <10}0x{: <10}0x{: <10}0x{: <10}",
+            h.r#type.to_string(),
+            format!("{:x}", h.offset),
+            format!("{:x}", h.vaddr),
+            format!("{:x}", h.paddr),
+            format!("{:x}", h.filesz),
+            format!("{:x}", h.memsz),
+            format!("{:x}", h.flags),
+            format!("{:x}", h.align)
+        )
+    }
+}
+
+fn print_formatted_64bit_program_headers(headers: &[ProgramHeader64Bit]) {
+    println!(
+        "\nProgram Headers:
+  {: <16}{: <12}{: <12}{: <12}{: <12}{: <12}{: <12}{: <12}",
+        "Type", "Offset", "VirtAddr", "PhysAddr", "FileSize", "MemSize", "Flags", "Align"
+    );
+    for h in headers.iter() {
+        println!(
+            "  {: <16}0x{: <10}0x{: <10}0x{: <10}0x{: <10}0x{: <10}0x{: <10}0x{: <10}",
+            h.r#type.to_string(),
+            format!("{:x}", h.offset),
+            format!("{:x}", h.vaddr),
+            format!("{:x}", h.paddr),
+            format!("{:x}", h.filesz),
+            format!("{:x}", h.memsz),
+            format!("{:x}", h.flags),
+            format!("{:x}", h.align)
         )
     }
 }

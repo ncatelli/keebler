@@ -36,32 +36,33 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
                 .parse(&input)?
                 .unwrap();
 
-            print_formatted_header(ident, eh.file_header);
+            print_formatted_file_header(ident, eh.file_header);
         }
         (EiClass::ThirtyTwoBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u32, BigEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-            print_formatted_header(ident, eh.file_header);
+            print_formatted_file_header(ident, eh.file_header);
         }
         (EiClass::SixtyFourBit, EiData::Little) => {
             let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-            print_formatted_header(ident, eh.file_header);
+            print_formatted_file_header(ident, eh.file_header);
+            print_formatted_program_headers(&eh.program_headers);
         }
         (EiClass::SixtyFourBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u64, BigEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-            print_formatted_header(ident, eh.file_header);
+            print_formatted_file_header(ident, eh.file_header);
         }
     };
 
     Ok(())
 }
 
-fn print_formatted_header<A: std::fmt::LowerHex + std::fmt::Display>(
+fn print_formatted_file_header<A: std::fmt::LowerHex + std::fmt::Display>(
     ident: EiIdent,
     header: FileHeader<A>,
 ) {
@@ -104,4 +105,18 @@ fn print_formatted_header<A: std::fmt::LowerHex + std::fmt::Display>(
         header.shnum,
         header.shstrndx
     );
+}
+
+fn print_formatted_program_headers(headers: &[ProgramHeader64Bit]) {
+    println!(
+        "\nProgram Headers:
+  {:12}{:12}{:12}{:12}{:12}{:12}{:12}{:12}",
+        "Type", "Offset", "VirtAddr", "PhysAddr", "FileSize", "MemSize", "Flags", "Align"
+    );
+    for h in headers.iter() {
+        println!(
+            "  {:12?}{:12?}{:12?}{:12?}{:12?}{:12?}{:12?}{:12?}",
+            h.r#type, h.offset, h.vaddr, h.paddr, h.filesz, h.memsz, h.flags, h.align
+        )
+    }
 }

@@ -1075,14 +1075,14 @@ pub trait ProgramHeader {}
 /// Program header represents a Elf Program header for the 32-bit arrangement.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ProgramHeader32Bit {
-    r#type: ProgramHeaderType,
-    offset: u32,
-    vaddr: u32,
-    paddr: u32,
-    filesz: u32,
-    memsz: u32,
-    flags: u32,
-    align: u32,
+    pub r#type: ProgramHeaderType,
+    pub offset: u32,
+    pub vaddr: u32,
+    pub paddr: u32,
+    pub filesz: u32,
+    pub memsz: u32,
+    pub flags: u32,
+    pub align: u32,
 }
 
 impl ProgramHeader for ProgramHeader32Bit {}
@@ -1204,14 +1204,14 @@ where
 /// Program header represents a Elf Program header for the 64-bit arrangement.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ProgramHeader64Bit {
-    r#type: ProgramHeaderType,
-    flags: u32,
-    offset: u64,
-    vaddr: u64,
-    paddr: u64,
-    filesz: u64,
-    memsz: u64,
-    align: u64,
+    pub r#type: ProgramHeaderType,
+    pub flags: u32,
+    pub offset: u64,
+    pub vaddr: u64,
+    pub paddr: u64,
+    pub filesz: u64,
+    pub memsz: u64,
+    pub align: u64,
 }
 
 impl ProgramHeader for ProgramHeader64Bit {}

@@ -1573,6 +1573,102 @@ where
 }
 
 impl<'a>
+    parcel::Parser<'a, &'a [u8], ElfHeader<Elf32Addr, BigEndianDataEncoding, ProgramHeader32Bit>>
+    for ElfHeaderParser<Elf32Addr, BigEndianDataEncoding>
+where
+    ProgramHeaderTypeParser<BigEndianDataEncoding>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(
+        &self,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<
+        'a,
+        &'a [u8],
+        ElfHeader<Elf32Addr, BigEndianDataEncoding, ProgramHeader32Bit>,
+    > {
+        let preparse_input = &input[0..];
+        match EiIdentParser.parse(&input)? {
+            MatchStatus::Match((_, ei)) => {
+                FileHeaderParser::<Elf32Addr, BigEndianDataEncoding>::new()
+                    .and_then(|fh| {
+                        let phnum = fh.phnum as usize;
+                        ProgramHeaderParser::<Elf32Addr, BigEndianDataEncoding>::new()
+                            .take_n(phnum)
+                            .map(move |phs| (fh, phs))
+                    })
+                    .map(move |(fh, phs)| ElfHeader::new(ei, fh, phs))
+                    .parse(&preparse_input)
+            }
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }
+    }
+}
+
+impl<'a>
+    parcel::Parser<'a, &'a [u8], ElfHeader<Elf32Addr, LittleEndianDataEncoding, ProgramHeader32Bit>>
+    for ElfHeaderParser<Elf32Addr, LittleEndianDataEncoding>
+where
+    ProgramHeaderTypeParser<LittleEndianDataEncoding>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(
+        &self,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<
+        'a,
+        &'a [u8],
+        ElfHeader<Elf32Addr, LittleEndianDataEncoding, ProgramHeader32Bit>,
+    > {
+        let preparse_input = &input[0..];
+        match EiIdentParser.parse(&input)? {
+            MatchStatus::Match((_, ei)) => {
+                FileHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
+                    .and_then(|fh| {
+                        let phnum = fh.phnum as usize;
+                        ProgramHeaderParser::<Elf32Addr, LittleEndianDataEncoding>::new()
+                            .take_n(phnum)
+                            .map(move |phs| (fh, phs))
+                    })
+                    .map(move |(fh, phs)| ElfHeader::new(ei, fh, phs))
+                    .parse(&preparse_input)
+            }
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }
+    }
+}
+
+impl<'a>
+    parcel::Parser<'a, &'a [u8], ElfHeader<Elf64Addr, BigEndianDataEncoding, ProgramHeader64Bit>>
+    for ElfHeaderParser<Elf64Addr, BigEndianDataEncoding>
+where
+    ProgramHeaderTypeParser<BigEndianDataEncoding>: Parser<'a, &'a [u8], ProgramHeaderType>,
+{
+    fn parse(
+        &self,
+        input: &'a [u8],
+    ) -> parcel::ParseResult<
+        'a,
+        &'a [u8],
+        ElfHeader<Elf64Addr, BigEndianDataEncoding, ProgramHeader64Bit>,
+    > {
+        let preparse_input = &input[0..];
+        match EiIdentParser.parse(&input)? {
+            MatchStatus::Match((_, ei)) => {
+                FileHeaderParser::<Elf64Addr, BigEndianDataEncoding>::new()
+                    .and_then(|fh| {
+                        let phnum = fh.phnum as usize;
+                        ProgramHeaderParser::<Elf64Addr, BigEndianDataEncoding>::new()
+                            .take_n(phnum)
+                            .map(move |phs| (fh, phs))
+                    })
+                    .map(move |(fh, phs)| ElfHeader::new(ei, fh, phs))
+                    .parse(&preparse_input)
+            }
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }
+    }
+}
+
+impl<'a>
     parcel::Parser<'a, &'a [u8], ElfHeader<Elf64Addr, LittleEndianDataEncoding, ProgramHeader64Bit>>
     for ElfHeaderParser<Elf64Addr, LittleEndianDataEncoding>
 where

@@ -32,14 +32,14 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
     let ident = EiIdentParser.parse(input)?.unwrap();
     match (ident.ei_class, ident.ei_data) {
         (EiClass::ThirtyTwoBit, EiData::Little) => {
-            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u32, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
 
             print_formatted_header(ident, eh.file_header);
         }
         (EiClass::ThirtyTwoBit, EiData::Big) => {
-            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u32, BigEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
             print_formatted_header(ident, eh.file_header);
@@ -51,7 +51,7 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
             print_formatted_header(ident, eh.file_header);
         }
         (EiClass::SixtyFourBit, EiData::Big) => {
-            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u64, BigEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
             print_formatted_header(ident, eh.file_header);

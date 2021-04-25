@@ -1577,17 +1577,21 @@ where
         &'a [u8],
         ElfHeader<Elf64Addr, LittleEndianDataEncoding, ProgramHeader64Bit>,
     > {
-        parcel::join(
-            EiIdentParser,
-            FileHeaderParser::<Elf64Addr, LittleEndianDataEncoding>::new().and_then(|fh| {
-                let phnum = fh.phnum as usize;
-                ProgramHeaderParser::<Elf64Addr, LittleEndianDataEncoding>::new()
-                    .take_n(phnum)
-                    .map(move |phs| (fh, phs))
-            }),
-        )
-        .map(|(ei, (fh, phs))| ElfHeader::new(ei, fh, phs))
-        .parse(&input)
+        let preparse_input = &input[0..];
+        match EiIdentParser.parse(&input)? {
+            MatchStatus::Match((_, ei)) => {
+                FileHeaderParser::<Elf64Addr, LittleEndianDataEncoding>::new()
+                    .and_then(|fh| {
+                        let phnum = fh.phnum as usize;
+                        ProgramHeaderParser::<Elf64Addr, LittleEndianDataEncoding>::new()
+                            .take_n(phnum)
+                            .map(move |phs| (fh, phs))
+                    })
+                    .map(move |(fh, phs)| ElfHeader::new(ei, fh, phs))
+                    .parse(&preparse_input)
+            }
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }
     }
 }
 

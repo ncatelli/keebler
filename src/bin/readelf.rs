@@ -45,10 +45,10 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
             print_formatted_header(ident, eh.file_header);
         }
         (EiClass::SixtyFourBit, EiData::Little) => {
-            let eh = FileHeaderParser::<u64, LittleEndianDataEncoding>::new()
+            let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
                 .parse(&input)?
                 .unwrap();
-            print_formatted_header(ident, eh);
+            print_formatted_header(ident, eh.file_header);
         }
         (EiClass::SixtyFourBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
@@ -79,7 +79,7 @@ fn print_formatted_header<A: std::fmt::LowerHex + std::fmt::Display>(
   Start of program headers:          {}
   Start of section headers:          {}
   Flags:                             0x{:x}
-  Size of this header:              ` {} (bytes)
+  Size of this header:               {} (bytes)
   Size of program headers:           {} (bytes)
   Number of program headers:         {}
   Size of section headers:           {} (bytes)

@@ -38,6 +38,7 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
 
             print_formatted_file_header(ident, eh.file_header);
             print_formatted_32bit_program_headers(&eh.program_headers);
+            print_formatted_section_header(&eh.section_headers);
         }
         (EiClass::ThirtyTwoBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u32, BigEndianDataEncoding>::new()
@@ -45,6 +46,7 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
                 .unwrap();
             print_formatted_file_header(ident, eh.file_header);
             print_formatted_32bit_program_headers(&eh.program_headers);
+            print_formatted_section_header(&eh.section_headers);
         }
         (EiClass::SixtyFourBit, EiData::Little) => {
             let eh = ElfHeaderParser::<u64, LittleEndianDataEncoding>::new()
@@ -52,6 +54,7 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
                 .unwrap();
             print_formatted_file_header(ident, eh.file_header);
             print_formatted_64bit_program_headers(&eh.program_headers);
+            print_formatted_section_header(&eh.section_headers);
         }
         (EiClass::SixtyFourBit, EiData::Big) => {
             let eh = ElfHeaderParser::<u64, BigEndianDataEncoding>::new()
@@ -59,6 +62,7 @@ fn parse_and_print_formatted_header(input: &[u8]) -> Result<(), String> {
                 .unwrap();
             print_formatted_file_header(ident, eh.file_header);
             print_formatted_64bit_program_headers(&eh.program_headers);
+            print_formatted_section_header(&eh.section_headers);
         }
     };
 
@@ -148,6 +152,34 @@ fn print_formatted_64bit_program_headers(headers: &[ProgramHeader64Bit]) {
             format!("{:x}", h.memsz),
             format!("{:x}", h.flags),
             format!("{:x}", h.align)
+        )
+    }
+}
+
+fn print_formatted_section_header<A>(headers: &[SectionHeader<A>])
+where
+    A: AddressWidth + std::fmt::Display + std::fmt::LowerHex,
+{
+    println!(
+        "\nSection Headers:
+  {: <16}{: <24}{: <24}{: <24}{: <24}
+    {: <24}{: <24}{: <24}{: <24}{: <24}",
+        "Name", "Type", "Address", "Offset", "Size", "EntSize", "Flags", "Link", "Info", "Align"
+    );
+    for h in headers.iter() {
+        println!(
+            "  {: <16}{: <12}0x{: <24}0x{: <24}0x{: <24}
+    0x{: <24}0x{: <24}0x{: <24}0x{: <24}0x{: <24}",
+            h.sh_name.to_string(),
+            h.sh_type.to_string(),
+            format!("{:x}", h.sh_addr),
+            format!("{:x}", h.sh_offset),
+            format!("{:x}", h.sh_size),
+            format!("{:x}", h.sh_entsize),
+            format!("{:x}", h.sh_flags),
+            format!("{:x}", h.sh_link),
+            format!("{:x}", h.sh_info),
+            format!("{:x}", h.sh_addr_align)
         )
     }
 }

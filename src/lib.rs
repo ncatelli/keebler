@@ -1249,6 +1249,17 @@ pub enum ShType {
     Other = 0x9999,
 }
 
+impl std::fmt::Display for ShType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = match self {
+            ShType::Null => "NULL",
+            ShType::Other => "OTHER",
+        };
+
+        write!(f, "{}", repr)
+    }
+}
+
 pub struct ShTypeParser<E>
 where
     E: DataEncoding,

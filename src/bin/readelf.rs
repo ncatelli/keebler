@@ -80,8 +80,8 @@ fn print_formatted_file_header<A: std::fmt::LowerHex + std::fmt::Display>(
   Machine:                           {}
   Version:                           {}
   Entry point address:               0x{:x}
-  Start of program headers:          {}
-  Start of section headers:          {}
+  Start of program headers:          0x{:x}
+  Start of section headers:          0x{:x}
   Flags:                             0x{:x}
   Size of this header:               {} (bytes)
   Size of program headers:           {} (bytes)

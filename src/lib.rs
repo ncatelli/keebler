@@ -1246,14 +1246,46 @@ impl ProgramHeader for ProgramHeader64Bit {}
 #[repr(u32)]
 pub enum ShType {
     Null = 0x00,
-    Other = 0x9999,
+    ProgBits = 0x01,
+    SymTab = 0x02,
+    StrTab = 0x03,
+    Rela = 0x04,
+    Hash = 0x05,
+    Dynamic = 0x06,
+    Note = 0x07,
+    NoBits = 0x08,
+    Rel = 0x09,
+    ShLib = 0x0a,
+    DynSym = 0x0b,
+    InitArray = 0x0e,
+    FiniArray = 0x0f,
+    PreInitArray = 0x10,
+    Group = 0x11,
+    SymTabShndx = 0x12,
+    Num = 0x13,
 }
 
 impl std::fmt::Display for ShType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let repr = match self {
             ShType::Null => "NULL",
-            ShType::Other => "OTHER",
+            ShType::ProgBits => "PROG_Bits",
+            ShType::SymTab => "SYM_TAB",
+            ShType::StrTab => "STR_TAB",
+            ShType::Rela => "RELA",
+            ShType::Hash => "HASH",
+            ShType::Dynamic => "DYNAMIC",
+            ShType::Note => "NOTE",
+            ShType::NoBits => "NO_BITS",
+            ShType::Rel => "REL",
+            ShType::ShLib => "SH_LIB",
+            ShType::DynSym => "DYN_SYM",
+            ShType::InitArray => "INIT_ARRAY",
+            ShType::FiniArray => "FINI_ARRAY",
+            ShType::PreInitArray => "PRE_INIT_ARRAY",
+            ShType::Group => "GROUP",
+            ShType::SymTabShndx => "SYM_TAB_SHNDX",
+            ShType::Num => "NUM",
         };
 
         write!(f, "{}", repr)
@@ -1296,9 +1328,26 @@ where
         let encoding = EiData::from(E::default());
 
         parcel::one_of(vec![
-            expect_u32(encoding, ShType::Null as u32).map(|_| ShType::Null)
+            expect_u32(encoding, ShType::Null as u32).map(|_| ShType::Null),
+            expect_u32(encoding, ShType::ProgBits as u32).map(|_| ShType::ProgBits),
+            expect_u32(encoding, ShType::SymTab as u32).map(|_| ShType::SymTab),
+            expect_u32(encoding, ShType::StrTab as u32).map(|_| ShType::StrTab),
+            expect_u32(encoding, ShType::Rela as u32).map(|_| ShType::Rela),
+            expect_u32(encoding, ShType::Hash as u32).map(|_| ShType::Hash),
+            expect_u32(encoding, ShType::Dynamic as u32).map(|_| ShType::Dynamic),
+            expect_u32(encoding, ShType::Note as u32).map(|_| ShType::Note),
+            expect_u32(encoding, ShType::NoBits as u32).map(|_| ShType::NoBits),
+            expect_u32(encoding, ShType::Rel as u32).map(|_| ShType::Rel),
+            expect_u32(encoding, ShType::ShLib as u32).map(|_| ShType::ShLib),
+            expect_u32(encoding, ShType::DynSym as u32).map(|_| ShType::DynSym),
+            expect_u32(encoding, ShType::InitArray as u32).map(|_| ShType::InitArray),
+            expect_u32(encoding, ShType::FiniArray as u32).map(|_| ShType::FiniArray),
+            expect_u32(encoding, ShType::PreInitArray as u32).map(|_| ShType::PreInitArray),
+            expect_u32(encoding, ShType::Group as u32).map(|_| ShType::Group),
+            expect_u32(encoding, ShType::SymTabShndx as u32).map(|_| ShType::SymTabShndx),
+            expect_u32(encoding, ShType::Num as u32).map(|_| ShType::Num),
         ])
-        .or(move || match_u32(encoding).map(|_| ShType::Other))
+        .or(move || match_u32(encoding).map(|_| ShType::Null))
         .parse(input)
     }
 }

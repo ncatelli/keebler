@@ -80,7 +80,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiClass> for EiClassParser {
     }
 }
 
-/// EiData stores a 1-byte value representing if the header is in little-endian
+/// EiData stores an 8-bit value representing if the header is in little-endian
 /// or big-endian format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -987,6 +987,7 @@ where
     }
 }
 
+/// ProgramHeaderType represents each type of program header.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u32)]
 pub enum ProgramHeaderType {
@@ -1002,9 +1003,9 @@ pub enum ProgramHeaderType {
     HiOs = 0x6FFFFFFF,
     LoProc = 0x70000000,
     HiProc = 0x7FFFFFFF,
-    GNUEHFRAME = 0x6474E550,
-    GNUSTACK = 0x6474E551,
-    GNURELRO = 0x6474E552,
+    GnuEhFrame = 0x6474E550,
+    GnuStack = 0x6474E551,
+    GnuRelro = 0x6474E552,
 }
 
 impl std::fmt::Display for ProgramHeaderType {
@@ -1022,9 +1023,9 @@ impl std::fmt::Display for ProgramHeaderType {
             ProgramHeaderType::HiOs => "HI_OS",
             ProgramHeaderType::LoProc => "LO_PROC",
             ProgramHeaderType::HiProc => "HI_PROC",
-            ProgramHeaderType::GNUEHFRAME => "GNU_EH_FRAME",
-            ProgramHeaderType::GNUSTACK => "GNU_STACK",
-            ProgramHeaderType::GNURELRO => "GNU_RELRO",
+            ProgramHeaderType::GnuEhFrame => "GNU_EH_FRAME",
+            ProgramHeaderType::GnuStack => "GNU_STACK",
+            ProgramHeaderType::GnuRelro => "GNU_RELRO",
         };
 
         write!(f, "{}", repr)
@@ -1066,12 +1067,12 @@ where
             expect_u32(data, ProgramHeaderType::HiOs as u32).map(|_| ProgramHeaderType::HiOs),
             expect_u32(data, ProgramHeaderType::LoProc as u32).map(|_| ProgramHeaderType::LoProc),
             expect_u32(data, ProgramHeaderType::HiProc as u32).map(|_| ProgramHeaderType::HiProc),
-            expect_u32(data, ProgramHeaderType::GNUEHFRAME as u32)
-                .map(|_| ProgramHeaderType::GNUEHFRAME),
-            expect_u32(data, ProgramHeaderType::GNUSTACK as u32)
-                .map(|_| ProgramHeaderType::GNUSTACK),
-            expect_u32(data, ProgramHeaderType::GNURELRO as u32)
-                .map(|_| ProgramHeaderType::GNURELRO),
+            expect_u32(data, ProgramHeaderType::GnuEhFrame as u32)
+                .map(|_| ProgramHeaderType::GnuEhFrame),
+            expect_u32(data, ProgramHeaderType::GnuStack as u32)
+                .map(|_| ProgramHeaderType::GnuStack),
+            expect_u32(data, ProgramHeaderType::GnuRelro as u32)
+                .map(|_| ProgramHeaderType::GnuRelro),
         ])
         .parse(input)
     }
@@ -1093,7 +1094,8 @@ impl<'a> parcel::Parser<'a, &'a [u8], ProgramHeaderType>
     }
 }
 
-/// Represents a Program
+/// Represents any kind of ProgramHeader, functioning as a way to link the 32
+/// and 64-bit ProgramHeader types.
 pub trait ProgramHeader {}
 
 /// Program header represents a Elf Program header for the 32-bit arrangement.
@@ -1292,6 +1294,7 @@ impl std::fmt::Display for ShType {
     }
 }
 
+/// Provides a byte parser for a ShType from a given endian source.
 pub struct ShTypeParser<E>
 where
     E: DataEncoding,
@@ -1370,6 +1373,7 @@ pub enum ShFlags64Bit {
     Other = 0x9999,
 }
 
+/// Provides a parser for ShFlags for a given address width and endianness.
 pub struct ShFlagsParser<A, E>
 where
     A: AddressWidth,
@@ -1434,6 +1438,8 @@ where
     }
 }
 
+/// Provides a trait for identifying Section headers. Functionally this works
+/// to link the 32-bit and 64-bit SectionHeader types.
 pub trait SectionHeader {}
 
 /// Section header represents a Elf Program header.
@@ -1470,6 +1476,7 @@ pub struct SectionHeader64Bit {
 
 impl SectionHeader for SectionHeader64Bit {}
 
+/// Implements a parser for SectionHeaders of a given endianness and address width.
 pub struct SectionHeaderParser<A, E>
 where
     A: AddressWidth,
@@ -1624,6 +1631,8 @@ where
     }
 }
 
+/// ElfHeader represents an ELF Header and functions to link the 32-bit and
+/// 64-bit ElfHeader types.
 pub trait ElfHeader {}
 
 /// ElfHeader32Bit captures the full ELF file header into a single struct along
@@ -1698,6 +1707,8 @@ where
 
 impl<E: DataEncoding> ElfHeader for ElfHeader64Bit<E> {}
 
+/// ElfHeaderParser implements a parser for ElfHeader types for each variant
+/// of address width from a source of a given endianness.
 pub struct ElfHeaderParser<A, E>
 where
     A: AddressWidth,

@@ -80,7 +80,7 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiClass> for EiClassParser {
     }
 }
 
-/// EiData stores a 1-byte value representing if the header is in little-endian
+/// EiData stores an 8-bit value representing if the header is in little-endian
 /// or big-endian format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -735,13 +735,13 @@ impl<'a> parcel::Parser<'a, &'a [u8], EiIdent> for EiIdentParser {
 /// information along with sizing, architechture and additional metadata about
 /// other ELF headers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FileHeader<AddrWidth> {
+pub struct FileHeader<A> {
     pub r#type: Type,
     pub machine: Machine,
     pub version: Version,
-    pub entry_point: AddrWidth,
-    pub ph_offset: AddrWidth,
-    pub sh_offset: AddrWidth,
+    pub entry_point: A,
+    pub ph_offset: A,
+    pub sh_offset: A,
     pub flags: u32,
     pub eh_size: u16,
     pub phent_size: u16,
@@ -987,6 +987,7 @@ where
     }
 }
 
+/// ProgramHeaderType represents each type of program header.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u32)]
 pub enum ProgramHeaderType {
@@ -1002,9 +1003,9 @@ pub enum ProgramHeaderType {
     HiOs = 0x6FFFFFFF,
     LoProc = 0x70000000,
     HiProc = 0x7FFFFFFF,
-    GNUEHFRAME = 0x6474E550,
-    GNUSTACK = 0x6474E551,
-    GNURELRO = 0x6474E552,
+    GnuEhFrame = 0x6474E550,
+    GnuStack = 0x6474E551,
+    GnuRelro = 0x6474E552,
 }
 
 impl std::fmt::Display for ProgramHeaderType {
@@ -1022,9 +1023,9 @@ impl std::fmt::Display for ProgramHeaderType {
             ProgramHeaderType::HiOs => "HI_OS",
             ProgramHeaderType::LoProc => "LO_PROC",
             ProgramHeaderType::HiProc => "HI_PROC",
-            ProgramHeaderType::GNUEHFRAME => "GNU_EH_FRAME",
-            ProgramHeaderType::GNUSTACK => "GNU_STACK",
-            ProgramHeaderType::GNURELRO => "GNU_RELRO",
+            ProgramHeaderType::GnuEhFrame => "GNU_EH_FRAME",
+            ProgramHeaderType::GnuStack => "GNU_STACK",
+            ProgramHeaderType::GnuRelro => "GNU_RELRO",
         };
 
         write!(f, "{}", repr)
@@ -1066,12 +1067,12 @@ where
             expect_u32(data, ProgramHeaderType::HiOs as u32).map(|_| ProgramHeaderType::HiOs),
             expect_u32(data, ProgramHeaderType::LoProc as u32).map(|_| ProgramHeaderType::LoProc),
             expect_u32(data, ProgramHeaderType::HiProc as u32).map(|_| ProgramHeaderType::HiProc),
-            expect_u32(data, ProgramHeaderType::GNUEHFRAME as u32)
-                .map(|_| ProgramHeaderType::GNUEHFRAME),
-            expect_u32(data, ProgramHeaderType::GNUSTACK as u32)
-                .map(|_| ProgramHeaderType::GNUSTACK),
-            expect_u32(data, ProgramHeaderType::GNURELRO as u32)
-                .map(|_| ProgramHeaderType::GNURELRO),
+            expect_u32(data, ProgramHeaderType::GnuEhFrame as u32)
+                .map(|_| ProgramHeaderType::GnuEhFrame),
+            expect_u32(data, ProgramHeaderType::GnuStack as u32)
+                .map(|_| ProgramHeaderType::GnuStack),
+            expect_u32(data, ProgramHeaderType::GnuRelro as u32)
+                .map(|_| ProgramHeaderType::GnuRelro),
         ])
         .parse(input)
     }
@@ -1093,7 +1094,8 @@ impl<'a> parcel::Parser<'a, &'a [u8], ProgramHeaderType>
     }
 }
 
-/// Represents a Program
+/// Represents any kind of ProgramHeader, functioning as a way to link the 32
+/// and 64-bit ProgramHeader types.
 pub trait ProgramHeader {}
 
 /// Program header represents a Elf Program header for the 32-bit arrangement.
@@ -1243,7 +1245,7 @@ impl ProgramHeader for ProgramHeader64Bit {}
 /// ShType reprents all representable formats of the sh_type filed of a section
 /// header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
+#[repr(u64)]
 pub enum ShType {
     Null = 0x00,
     ProgBits = 0x01,
@@ -1292,6 +1294,7 @@ impl std::fmt::Display for ShType {
     }
 }
 
+/// Provides a byte parser for a ShType from a given endian source.
 pub struct ShTypeParser<E>
 where
     E: DataEncoding,
@@ -1352,15 +1355,25 @@ where
     }
 }
 
-/// ShFlags reprents all representable formats of the sh_flags filed of a
+/// ShFlags32Bit reprents all representable formats of the sh_flags filed of a
 /// section header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
-pub enum ShFlags {
+pub enum ShFlags32Bit {
     Write = 0x01,
     Other = 0x9999,
 }
 
+/// ShFlags64Bit reprents all representable formats of the sh_flags filed of a
+/// section header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u64)]
+pub enum ShFlags64Bit {
+    Write = 0x01,
+    Other = 0x9999,
+}
+
+/// Provides a parser for ShFlags for a given address width and endianness.
 pub struct ShFlagsParser<A, E>
 where
     A: AddressWidth,
@@ -1393,56 +1406,77 @@ where
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], ShFlags> for ShFlagsParser<Elf32Addr, E>
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShFlags32Bit> for ShFlagsParser<Elf32Addr, E>
 where
     EiData: From<E>,
     E: DataEncoding + Default + 'static,
 {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShFlags> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShFlags32Bit> {
         let encoding = EiData::from(E::default());
 
         parcel::one_of(vec![
-            expect_u32(encoding, ShFlags::Write as u32).map(|_| ShFlags::Write)
+            expect_u32(encoding, ShFlags32Bit::Write as u32).map(|_| ShFlags32Bit::Write)
         ])
-        .or(move || match_u32(encoding).map(|_| ShFlags::Other))
+        .or(move || match_u32(encoding).map(|_| ShFlags32Bit::Other))
         .parse(input)
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], ShFlags> for ShFlagsParser<Elf64Addr, E>
+impl<'a, E> parcel::Parser<'a, &'a [u8], ShFlags64Bit> for ShFlagsParser<Elf64Addr, E>
 where
     EiData: From<E>,
     E: DataEncoding + Default + 'static,
 {
-    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShFlags> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ShFlags64Bit> {
         let encoding = EiData::from(E::default());
 
         parcel::one_of(vec![
-            expect_u64(encoding, ShFlags::Write as u64).map(|_| ShFlags::Write)
+            expect_u64(encoding, ShFlags64Bit::Write as u64).map(|_| ShFlags64Bit::Write)
         ])
-        .or(move || match_u64(encoding).map(|_| ShFlags::Other))
+        .or(move || match_u64(encoding).map(|_| ShFlags64Bit::Other))
         .parse(input)
     }
 }
+
+/// Provides a trait for identifying Section headers. Functionally this works
+/// to link the 32-bit and 64-bit SectionHeader types.
+pub trait SectionHeader {}
 
 /// Section header represents a Elf Program header.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SectionHeader<A>
-where
-    A: AddressWidth,
-{
+pub struct SectionHeader32Bit {
     pub sh_name: u32,
     pub sh_type: ShType,
-    pub sh_flags: A,
-    pub sh_addr: A,
-    pub sh_offset: A,
-    pub sh_size: A,
+    pub sh_flags: ShFlags32Bit,
+    pub sh_addr: u32,
+    pub sh_offset: u32,
+    pub sh_size: u32,
     pub sh_link: u32,
     pub sh_info: u32,
-    pub sh_addr_align: A,
-    pub sh_entsize: A,
+    pub sh_addr_align: u32,
+    pub sh_entsize: u32,
 }
 
+impl SectionHeader for SectionHeader32Bit {}
+
+/// Section header represents a Elf Program header.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SectionHeader64Bit {
+    pub sh_name: u32,
+    pub sh_type: ShType,
+    pub sh_flags: ShFlags64Bit,
+    pub sh_addr: u64,
+    pub sh_offset: u64,
+    pub sh_size: u64,
+    pub sh_link: u32,
+    pub sh_info: u32,
+    pub sh_addr_align: u64,
+    pub sh_entsize: u64,
+}
+
+impl SectionHeader for SectionHeader64Bit {}
+
+/// Implements a parser for SectionHeaders of a given endianness and address width.
 pub struct SectionHeaderParser<A, E>
 where
     A: AddressWidth,
@@ -1475,23 +1509,22 @@ where
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], SectionHeader<Elf32Addr>>
-    for SectionHeaderParser<Elf32Addr, E>
+impl<'a, E> parcel::Parser<'a, &'a [u8], SectionHeader32Bit> for SectionHeaderParser<Elf32Addr, E>
 where
     EiData: From<E>,
     E: DataEncoding + Default + 'static,
 {
-    fn parse(
-        &self,
-        input: &'a [u8],
-    ) -> parcel::ParseResult<'a, &'a [u8], SectionHeader<Elf32Addr>> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], SectionHeader32Bit> {
         let encoding = EiData::from(E::default());
 
         parcel::join(
             match_u32(encoding),
             parcel::join(
                 ShTypeParser::<E>::new(),
-                parcel::join(match_u32(encoding), parcel::take_n(match_u32(encoding), 7)),
+                parcel::join(
+                    ShFlagsParser::<Elf32Addr, E>::new(),
+                    parcel::take_n(match_u32(encoding), 7),
+                ),
             ),
         )
         .map(|(sh_name, (sh_type, (sh_flags, u32_seq)))| {
@@ -1512,7 +1545,7 @@ where
                 sh_info,
                 sh_addr_align,
                 sh_entsize,
-            )| SectionHeader {
+            )| SectionHeader32Bit {
                 sh_name,
                 sh_type,
                 sh_flags,
@@ -1529,16 +1562,12 @@ where
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], SectionHeader<Elf64Addr>>
-    for SectionHeaderParser<Elf64Addr, E>
+impl<'a, E> parcel::Parser<'a, &'a [u8], SectionHeader64Bit> for SectionHeaderParser<Elf64Addr, E>
 where
     EiData: From<E>,
     E: DataEncoding + Default + 'static,
 {
-    fn parse(
-        &self,
-        input: &'a [u8],
-    ) -> parcel::ParseResult<'a, &'a [u8], SectionHeader<Elf64Addr>> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], SectionHeader64Bit> {
         let encoding = EiData::from(E::default());
 
         parcel::join(
@@ -1546,7 +1575,7 @@ where
             parcel::join(
                 ShTypeParser::<E>::new(),
                 parcel::join(
-                    match_u64(encoding),
+                    ShFlagsParser::<Elf64Addr, E>::new(),
                     parcel::join(
                         parcel::take_n(match_u64(encoding), 3),
                         parcel::join(
@@ -1585,7 +1614,7 @@ where
                 sh_info,
                 sh_addr_align,
                 sh_entsize,
-            )| SectionHeader {
+            )| SectionHeader64Bit {
                 sh_name,
                 sh_type,
                 sh_flags,
@@ -1602,33 +1631,33 @@ where
     }
 }
 
-/// ElfHeader captures the full ELF file header into a single struct along
+/// ElfHeader represents an ELF Header and functions to link the 32-bit and
+/// 64-bit ElfHeader types.
+pub trait ElfHeader {}
+
+/// ElfHeader32Bit captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ElfHeader<A, E, PH>
+pub struct ElfHeader32Bit<E>
 where
-    A: AddressWidth,
     E: DataEncoding + Default + 'static,
-    PH: ProgramHeader,
 {
     endianness: std::marker::PhantomData<E>,
     pub ei_ident: EiIdent,
-    pub file_header: FileHeader<A>,
-    pub program_headers: Vec<PH>,
-    pub section_headers: Vec<SectionHeader<A>>,
+    pub file_header: FileHeader<Elf32Addr>,
+    pub program_headers: Vec<ProgramHeader32Bit>,
+    pub section_headers: Vec<SectionHeader32Bit>,
 }
 
-impl<A, E, PH> ElfHeader<A, E, PH>
+impl<E> ElfHeader32Bit<E>
 where
-    A: AddressWidth,
     E: DataEncoding + Default + 'static,
-    PH: ProgramHeader,
 {
     pub fn new(
         ei_ident: EiIdent,
-        file_header: FileHeader<A>,
-        program_headers: Vec<PH>,
-        section_headers: Vec<SectionHeader<A>>,
+        file_header: FileHeader<Elf32Addr>,
+        program_headers: Vec<ProgramHeader32Bit>,
+        section_headers: Vec<SectionHeader32Bit>,
     ) -> Self {
         Self {
             endianness: std::marker::PhantomData,
@@ -1640,6 +1669,46 @@ where
     }
 }
 
+impl<E> ElfHeader for ElfHeader32Bit<E> where E: DataEncoding + Default + 'static {}
+
+/// ElfHeader64Bit captures the full ELF file header into a single struct along
+/// with the Identification information separated from the file header.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ElfHeader64Bit<E>
+where
+    E: DataEncoding,
+{
+    endianness: std::marker::PhantomData<E>,
+    pub ei_ident: EiIdent,
+    pub file_header: FileHeader<Elf64Addr>,
+    pub program_headers: Vec<ProgramHeader64Bit>,
+    pub section_headers: Vec<SectionHeader64Bit>,
+}
+
+impl<E> ElfHeader64Bit<E>
+where
+    E: DataEncoding,
+{
+    pub fn new(
+        ei_ident: EiIdent,
+        file_header: FileHeader<Elf64Addr>,
+        program_headers: Vec<ProgramHeader64Bit>,
+        section_headers: Vec<SectionHeader64Bit>,
+    ) -> Self {
+        Self {
+            endianness: std::marker::PhantomData,
+            ei_ident,
+            file_header,
+            program_headers,
+            section_headers,
+        }
+    }
+}
+
+impl<E: DataEncoding> ElfHeader for ElfHeader64Bit<E> {}
+
+/// ElfHeaderParser implements a parser for ElfHeader types for each variant
+/// of address width from a source of a given endianness.
 pub struct ElfHeaderParser<A, E>
 where
     A: AddressWidth,
@@ -1672,18 +1741,14 @@ where
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader<Elf32Addr, E, ProgramHeader32Bit>>
-    for ElfHeaderParser<Elf32Addr, E>
+impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader32Bit<E>> for ElfHeaderParser<Elf32Addr, E>
 where
     E: DataEncoding + Default + 'static,
     FileHeaderParser<Elf32Addr, E>: Parser<'a, &'a [u8], FileHeader<Elf32Addr>>,
     ProgramHeaderParser<Elf32Addr, E>: Parser<'a, &'a [u8], ProgramHeader32Bit>,
-    SectionHeaderParser<Elf32Addr, E>: Parser<'a, &'a [u8], SectionHeader<Elf32Addr>>,
+    SectionHeaderParser<Elf32Addr, E>: Parser<'a, &'a [u8], SectionHeader32Bit>,
 {
-    fn parse(
-        &self,
-        input: &'a [u8],
-    ) -> parcel::ParseResult<'a, &'a [u8], ElfHeader<Elf32Addr, E, ProgramHeader32Bit>> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ElfHeader32Bit<E>> {
         let preparse_input = &input[0..];
         match EiIdentParser.parse(&input)? {
             MatchStatus::Match((_, ei)) => FileHeaderParser::<Elf32Addr, E>::new()
@@ -1699,25 +1764,21 @@ where
                         .take_n(shnum)
                         .map(move |shs| (fh, phs.to_owned(), shs))
                 })
-                .map(move |(fh, phs, shs)| ElfHeader::new(ei, fh, phs, shs))
+                .map(move |(fh, phs, shs)| ElfHeader32Bit::new(ei, fh, phs, shs))
                 .parse(&preparse_input),
             MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
         }
     }
 }
 
-impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>>
-    for ElfHeaderParser<Elf64Addr, E>
+impl<'a, E> parcel::Parser<'a, &'a [u8], ElfHeader64Bit<E>> for ElfHeaderParser<Elf64Addr, E>
 where
     E: DataEncoding + Default + 'static,
     FileHeaderParser<Elf64Addr, E>: Parser<'a, &'a [u8], FileHeader<Elf64Addr>>,
     ProgramHeaderParser<Elf64Addr, E>: Parser<'a, &'a [u8], ProgramHeader64Bit>,
-    SectionHeaderParser<Elf64Addr, E>: Parser<'a, &'a [u8], SectionHeader<Elf64Addr>>,
+    SectionHeaderParser<Elf64Addr, E>: Parser<'a, &'a [u8], SectionHeader64Bit>,
 {
-    fn parse(
-        &self,
-        input: &'a [u8],
-    ) -> parcel::ParseResult<'a, &'a [u8], ElfHeader<Elf64Addr, E, ProgramHeader64Bit>> {
+    fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ElfHeader64Bit<E>> {
         let preparse_input = &input[0..];
         match EiIdentParser.parse(&input)? {
             MatchStatus::Match((_, ei)) => FileHeaderParser::<Elf64Addr, E>::new()
@@ -1733,7 +1794,7 @@ where
                         .take_n(shnum)
                         .map(move |shs| (fh, phs.to_owned(), shs))
                 })
-                .map(move |(fh, phs, shs)| ElfHeader::new(ei, fh, phs, shs))
+                .map(move |(fh, phs, shs)| ElfHeader64Bit::new(ei, fh, phs, shs))
                 .parse(&preparse_input),
             MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
         }

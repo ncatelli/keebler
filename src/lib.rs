@@ -761,7 +761,7 @@ where
     endianness: std::marker::PhantomData<E>,
 }
 
-impl<E> FileHeaderParser<u32, E>
+impl<E> FileHeaderParser<Elf32Addr, E>
 where
     E: DataEncoding,
 {

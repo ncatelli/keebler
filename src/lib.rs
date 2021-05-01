@@ -15,6 +15,11 @@ type Elf64Addr = u64;
 
 impl AddressWidth for Elf64Addr {}
 
+/// Serialize defines a trait for serializing a type to a corresponding binary format.
+pub trait Serialize<A, E> {
+    fn serialize(&self) -> Vec<u8>;
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FileErr {
     InvalidFile,

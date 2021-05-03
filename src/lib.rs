@@ -15,6 +15,11 @@ type Elf64Addr = u64;
 
 impl AddressWidth for Elf64Addr {}
 
+/// Serialize defines a trait for serializing a type to a corresponding binary format.
+pub trait Serialize<A, E> {
+    fn serialize(&self) -> Vec<u8>;
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FileErr {
     InvalidFile,
@@ -696,6 +701,18 @@ pub struct EiIdent {
     pub ei_abiversion: EiAbiVersion,
 }
 
+impl From<EiIdent> for Vec<u8> {
+    fn from(src: EiIdent) -> Self {
+        vec![
+            src.ei_class as u8,
+            src.ei_class as u8,
+            src.ei_version as u8,
+            src.ei_osabi as u8,
+            src.ei_abiversion as u8,
+        ]
+    }
+}
+
 /// EiIdentParser defines a parser for parsing a raw bitstream into an EiIdent.
 pub struct EiIdentParser;
 
@@ -751,6 +768,98 @@ pub struct FileHeader<A> {
     pub shstrndx: u16,
 }
 
+impl Serialize<Elf32Addr, LittleEndianDataEncoding> for FileHeader<Elf32Addr> {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u16>::into(self.r#type).to_le_bytes().to_vec(),
+            Into::<u16>::into(self.machine).to_le_bytes().to_vec(),
+            Into::<u32>::into(self.version).to_le_bytes().to_vec(),
+            self.entry_point.to_le_bytes().to_vec(),
+            self.ph_offset.to_le_bytes().to_vec(),
+            self.sh_offset.to_le_bytes().to_vec(),
+            self.flags.to_le_bytes().to_vec(),
+            self.eh_size.to_le_bytes().to_vec(),
+            self.phent_size.to_le_bytes().to_vec(),
+            self.phnum.to_le_bytes().to_vec(),
+            self.shent_size.to_le_bytes().to_vec(),
+            self.shnum.to_le_bytes().to_vec(),
+            self.shstrndx.to_le_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf32Addr, BigEndianDataEncoding> for FileHeader<Elf32Addr> {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u16>::into(self.r#type).to_be_bytes().to_vec(),
+            Into::<u16>::into(self.machine).to_be_bytes().to_vec(),
+            Into::<u32>::into(self.version).to_be_bytes().to_vec(),
+            self.entry_point.to_be_bytes().to_vec(),
+            self.ph_offset.to_be_bytes().to_vec(),
+            self.sh_offset.to_be_bytes().to_vec(),
+            self.flags.to_be_bytes().to_vec(),
+            self.eh_size.to_be_bytes().to_vec(),
+            self.phent_size.to_be_bytes().to_vec(),
+            self.phnum.to_be_bytes().to_vec(),
+            self.shent_size.to_be_bytes().to_vec(),
+            self.shnum.to_be_bytes().to_vec(),
+            self.shstrndx.to_be_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf64Addr, LittleEndianDataEncoding> for FileHeader<Elf64Addr> {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u16>::into(self.r#type).to_le_bytes().to_vec(),
+            Into::<u16>::into(self.machine).to_le_bytes().to_vec(),
+            Into::<u32>::into(self.version).to_le_bytes().to_vec(),
+            self.entry_point.to_le_bytes().to_vec(),
+            self.ph_offset.to_le_bytes().to_vec(),
+            self.sh_offset.to_le_bytes().to_vec(),
+            self.flags.to_le_bytes().to_vec(),
+            self.eh_size.to_le_bytes().to_vec(),
+            self.phent_size.to_le_bytes().to_vec(),
+            self.phnum.to_le_bytes().to_vec(),
+            self.shent_size.to_le_bytes().to_vec(),
+            self.shnum.to_le_bytes().to_vec(),
+            self.shstrndx.to_le_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf64Addr, BigEndianDataEncoding> for FileHeader<Elf64Addr> {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u16>::into(self.r#type).to_be_bytes().to_vec(),
+            Into::<u16>::into(self.machine).to_be_bytes().to_vec(),
+            Into::<u32>::into(self.version).to_be_bytes().to_vec(),
+            self.entry_point.to_be_bytes().to_vec(),
+            self.ph_offset.to_be_bytes().to_vec(),
+            self.sh_offset.to_be_bytes().to_vec(),
+            self.flags.to_be_bytes().to_vec(),
+            self.eh_size.to_be_bytes().to_vec(),
+            self.phent_size.to_be_bytes().to_vec(),
+            self.phnum.to_be_bytes().to_vec(),
+            self.shent_size.to_be_bytes().to_vec(),
+            self.shnum.to_be_bytes().to_vec(),
+            self.shstrndx.to_be_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
 /// FileHeaderParser defines a parser for parsing a raw bitstream into a FileHeader.
 pub struct FileHeaderParser<A, E>
 where
@@ -761,7 +870,7 @@ where
     endianness: std::marker::PhantomData<E>,
 }
 
-impl<E> FileHeaderParser<u32, E>
+impl<E> FileHeaderParser<Elf32Addr, E>
 where
     E: DataEncoding,
 {
@@ -1008,6 +1117,12 @@ pub enum ProgramHeaderType {
     GnuRelro = 0x6474E552,
 }
 
+impl From<ProgramHeaderType> for u32 {
+    fn from(src: ProgramHeaderType) -> Self {
+        src as u32
+    }
+}
+
 impl std::fmt::Display for ProgramHeaderType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let repr = match self {
@@ -1112,6 +1227,40 @@ pub struct ProgramHeader32Bit {
 }
 
 impl ProgramHeader for ProgramHeader32Bit {}
+
+impl Serialize<Elf32Addr, LittleEndianDataEncoding> for ProgramHeader32Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u32>::into(self.r#type).to_le_bytes().to_vec(),
+            self.offset.to_le_bytes().to_vec(),
+            self.vaddr.to_le_bytes().to_vec(),
+            self.paddr.to_le_bytes().to_vec(),
+            self.filesz.to_le_bytes().to_vec(),
+            self.flags.to_le_bytes().to_vec(),
+            self.align.to_le_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf32Addr, BigEndianDataEncoding> for ProgramHeader32Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u32>::into(self.r#type).to_be_bytes().to_vec(),
+            self.offset.to_be_bytes().to_vec(),
+            self.vaddr.to_be_bytes().to_vec(),
+            self.paddr.to_be_bytes().to_vec(),
+            self.filesz.to_be_bytes().to_vec(),
+            self.flags.to_be_bytes().to_vec(),
+            self.align.to_be_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
 
 /// ProgramHeaderParser takes an address width and a data encoding that
 /// represents endianness and implements various parsers for each valid variant.
@@ -1242,10 +1391,44 @@ pub struct ProgramHeader64Bit {
 
 impl ProgramHeader for ProgramHeader64Bit {}
 
+impl Serialize<Elf64Addr, LittleEndianDataEncoding> for ProgramHeader64Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u32>::into(self.r#type).to_le_bytes().to_vec(),
+            self.offset.to_le_bytes().to_vec(),
+            self.vaddr.to_le_bytes().to_vec(),
+            self.paddr.to_le_bytes().to_vec(),
+            self.filesz.to_le_bytes().to_vec(),
+            self.flags.to_le_bytes().to_vec(),
+            self.align.to_le_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf64Addr, BigEndianDataEncoding> for ProgramHeader64Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            Into::<u32>::into(self.r#type).to_be_bytes().to_vec(),
+            self.offset.to_be_bytes().to_vec(),
+            self.vaddr.to_be_bytes().to_vec(),
+            self.paddr.to_be_bytes().to_vec(),
+            self.filesz.to_be_bytes().to_vec(),
+            self.flags.to_be_bytes().to_vec(),
+            self.align.to_be_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
 /// ShType reprents all representable formats of the sh_type filed of a section
 /// header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u64)]
+#[repr(u32)]
 pub enum ShType {
     Null = 0x00,
     ProgBits = 0x01,
@@ -1291,6 +1474,12 @@ impl std::fmt::Display for ShType {
         };
 
         write!(f, "{}", repr)
+    }
+}
+
+impl From<ShType> for u32 {
+    fn from(src: ShType) -> Self {
+        src as u32
     }
 }
 
@@ -1364,6 +1553,12 @@ pub enum ShFlags32Bit {
     Other = 0x9999,
 }
 
+impl From<ShFlags32Bit> for u32 {
+    fn from(src: ShFlags32Bit) -> Self {
+        src as u32
+    }
+}
+
 /// ShFlags64Bit reprents all representable formats of the sh_flags filed of a
 /// section header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1371,6 +1566,12 @@ pub enum ShFlags32Bit {
 pub enum ShFlags64Bit {
     Write = 0x01,
     Other = 0x9999,
+}
+
+impl From<ShFlags64Bit> for u64 {
+    fn from(src: ShFlags64Bit) -> Self {
+        src as u64
+    }
 }
 
 /// Provides a parser for ShFlags for a given address width and endianness.
@@ -1458,6 +1659,86 @@ pub struct SectionHeader32Bit {
 }
 
 impl SectionHeader for SectionHeader32Bit {}
+
+impl Serialize<Elf32Addr, LittleEndianDataEncoding> for SectionHeader32Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            self.sh_name.to_le_bytes().to_vec(),
+            Into::<u32>::into(self.sh_type).to_le_bytes().to_vec(),
+            Into::<u32>::into(self.sh_flags).to_le_bytes().to_vec(),
+            self.sh_addr.to_le_bytes().to_vec(),
+            self.sh_offset.to_le_bytes().to_vec(),
+            self.sh_size.to_le_bytes().to_vec(),
+            self.sh_link.to_le_bytes().to_vec(),
+            self.sh_info.to_le_bytes().to_vec(),
+            self.sh_addr_align.to_le_bytes().to_vec(),
+            self.sh_entsize.to_le_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf32Addr, BigEndianDataEncoding> for SectionHeader32Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            self.sh_name.to_be_bytes().to_vec(),
+            Into::<u32>::into(self.sh_type).to_be_bytes().to_vec(),
+            Into::<u32>::into(self.sh_flags).to_be_bytes().to_vec(),
+            self.sh_addr.to_be_bytes().to_vec(),
+            self.sh_offset.to_be_bytes().to_vec(),
+            self.sh_size.to_be_bytes().to_vec(),
+            self.sh_link.to_be_bytes().to_vec(),
+            self.sh_info.to_be_bytes().to_vec(),
+            self.sh_addr_align.to_be_bytes().to_vec(),
+            self.sh_entsize.to_be_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf64Addr, LittleEndianDataEncoding> for SectionHeader64Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            self.sh_name.to_le_bytes().to_vec(),
+            Into::<u32>::into(self.sh_type).to_le_bytes().to_vec(),
+            Into::<u64>::into(self.sh_flags).to_le_bytes().to_vec(),
+            self.sh_addr.to_le_bytes().to_vec(),
+            self.sh_offset.to_le_bytes().to_vec(),
+            self.sh_size.to_le_bytes().to_vec(),
+            self.sh_link.to_le_bytes().to_vec(),
+            self.sh_info.to_le_bytes().to_vec(),
+            self.sh_addr_align.to_le_bytes().to_vec(),
+            self.sh_entsize.to_le_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
+
+impl Serialize<Elf64Addr, BigEndianDataEncoding> for SectionHeader64Bit {
+    fn serialize(&self) -> Vec<u8> {
+        vec![
+            self.sh_name.to_be_bytes().to_vec(),
+            Into::<u32>::into(self.sh_type).to_be_bytes().to_vec(),
+            Into::<u64>::into(self.sh_flags).to_be_bytes().to_vec(),
+            self.sh_addr.to_be_bytes().to_vec(),
+            self.sh_offset.to_be_bytes().to_vec(),
+            self.sh_size.to_be_bytes().to_vec(),
+            self.sh_link.to_be_bytes().to_vec(),
+            self.sh_info.to_be_bytes().to_vec(),
+            self.sh_addr_align.to_be_bytes().to_vec(),
+            self.sh_entsize.to_be_bytes().to_vec(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+}
 
 /// Section header represents a Elf Program header.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1669,7 +1950,39 @@ where
     }
 }
 
-impl<E> ElfHeader for ElfHeader32Bit<E> where E: DataEncoding + Default + 'static {}
+impl ElfHeader for ElfHeader32Bit<LittleEndianDataEncoding> {}
+
+impl<E> From<ElfHeader32Bit<E>> for Vec<u8>
+where
+    SectionHeader32Bit: Serialize<Elf32Addr, E>,
+    ProgramHeader32Bit: Serialize<Elf32Addr, E>,
+    FileHeader<Elf32Addr>: Serialize<Elf32Addr, E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn from(src: ElfHeader32Bit<E>) -> Self {
+        let ident_bytes = Into::<Vec<u8>>::into(src.ei_ident);
+        let fh_bytes: Vec<u8> = Serialize::<Elf32Addr, E>::serialize(&src.file_header);
+        let ph_bytes: Vec<u8> = src
+            .program_headers
+            .iter()
+            .map(|ph| Serialize::<Elf32Addr, E>::serialize(ph))
+            .into_iter()
+            .flatten()
+            .collect();
+        let sh_bytes: Vec<u8> = src
+            .section_headers
+            .iter()
+            .map(|sh| Serialize::<Elf32Addr, E>::serialize(sh))
+            .into_iter()
+            .flatten()
+            .collect();
+
+        vec![ident_bytes, fh_bytes, ph_bytes, sh_bytes]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+}
 
 /// ElfHeader64Bit captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
@@ -1706,6 +2019,38 @@ where
 }
 
 impl<E: DataEncoding> ElfHeader for ElfHeader64Bit<E> {}
+
+impl<E> From<ElfHeader64Bit<E>> for Vec<u8>
+where
+    SectionHeader64Bit: Serialize<Elf64Addr, E>,
+    ProgramHeader64Bit: Serialize<Elf64Addr, E>,
+    FileHeader<Elf64Addr>: Serialize<Elf64Addr, E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn from(src: ElfHeader64Bit<E>) -> Self {
+        let ident_bytes = Into::<Vec<u8>>::into(src.ei_ident);
+        let fh_bytes: Vec<u8> = Serialize::<Elf64Addr, E>::serialize(&src.file_header);
+        let ph_bytes: Vec<u8> = src
+            .program_headers
+            .iter()
+            .map(|ph| Serialize::<Elf64Addr, E>::serialize(ph))
+            .into_iter()
+            .flatten()
+            .collect();
+        let sh_bytes: Vec<u8> = src
+            .section_headers
+            .iter()
+            .map(|sh| Serialize::<Elf64Addr, E>::serialize(sh))
+            .into_iter()
+            .flatten()
+            .collect();
+
+        vec![ident_bytes, fh_bytes, ph_bytes, sh_bytes]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+}
 
 /// ElfHeaderParser implements a parser for ElfHeader types for each variant
 /// of address width from a source of a given endianness.
@@ -2034,5 +2379,46 @@ mod tests {
                 .unwrap()
                 .unwrap()
         )
+    }
+
+    #[test]
+    fn should_serialize_a_header_to_bytes() {
+        let elf_header = ElfHeader64Bit::<LittleEndianDataEncoding>::new(
+            EiIdent {
+                ei_data: EiData::Little,
+                ei_class: EiClass::SixtyFourBit,
+                ei_osabi: EiOsAbi::SysV,
+                ei_version: EiVersion::One,
+                ei_abiversion: EiAbiVersion::One,
+            },
+            FileHeader::<Elf64Addr> {
+                r#type: Type::None,
+                machine: Machine::X86_64,
+                version: Version::One,
+                entry_point: 5u64,
+                ph_offset: 10u64,
+                sh_offset: 11u64,
+                flags: 2,
+                eh_size: 0,
+                phent_size: 1,
+                phnum: 1,
+                shent_size: 1,
+                shnum: 1,
+                shstrndx: 1,
+            },
+            vec![ProgramHeader64Bit {
+                r#type: ProgramHeaderType::Null,
+                offset: 0x00,
+                vaddr: 0x00,
+                paddr: 0x00,
+                filesz: 0x00,
+                memsz: 0x00,
+                flags: 0x00,
+                align: 0x00,
+            }],
+            vec![],
+        );
+
+        assert_eq!(101, Into::<Vec<u8>>::into(elf_header).len())
     }
 }

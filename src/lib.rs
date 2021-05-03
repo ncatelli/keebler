@@ -1984,38 +1984,6 @@ where
     }
 }
 
-impl<E> From<ElfHeader64Bit<E>> for Vec<u8>
-where
-    SectionHeader64Bit: Serialize<Elf64Addr, E>,
-    ProgramHeader64Bit: Serialize<Elf64Addr, E>,
-    FileHeader<Elf64Addr>: Serialize<Elf64Addr, E>,
-    E: DataEncoding + Default + 'static,
-{
-    fn from(src: ElfHeader64Bit<E>) -> Self {
-        let ident_bytes = Into::<Vec<u8>>::into(src.ei_ident);
-        let fh_bytes: Vec<u8> = Serialize::<Elf64Addr, E>::serialize(&src.file_header);
-        let ph_bytes: Vec<u8> = src
-            .program_headers
-            .iter()
-            .map(|ph| Serialize::<Elf64Addr, E>::serialize(ph))
-            .into_iter()
-            .flatten()
-            .collect();
-        let sh_bytes: Vec<u8> = src
-            .section_headers
-            .iter()
-            .map(|sh| Serialize::<Elf64Addr, E>::serialize(sh))
-            .into_iter()
-            .flatten()
-            .collect();
-
-        vec![ident_bytes, fh_bytes, ph_bytes, sh_bytes]
-            .into_iter()
-            .flatten()
-            .collect()
-    }
-}
-
 /// ElfHeader64Bit captures the full ELF file header into a single struct along
 /// with the Identification information separated from the file header.
 #[derive(Debug, Clone, PartialEq)]
@@ -2051,6 +2019,38 @@ where
 }
 
 impl<E: DataEncoding> ElfHeader for ElfHeader64Bit<E> {}
+
+impl<E> From<ElfHeader64Bit<E>> for Vec<u8>
+where
+    SectionHeader64Bit: Serialize<Elf64Addr, E>,
+    ProgramHeader64Bit: Serialize<Elf64Addr, E>,
+    FileHeader<Elf64Addr>: Serialize<Elf64Addr, E>,
+    E: DataEncoding + Default + 'static,
+{
+    fn from(src: ElfHeader64Bit<E>) -> Self {
+        let ident_bytes = Into::<Vec<u8>>::into(src.ei_ident);
+        let fh_bytes: Vec<u8> = Serialize::<Elf64Addr, E>::serialize(&src.file_header);
+        let ph_bytes: Vec<u8> = src
+            .program_headers
+            .iter()
+            .map(|ph| Serialize::<Elf64Addr, E>::serialize(ph))
+            .into_iter()
+            .flatten()
+            .collect();
+        let sh_bytes: Vec<u8> = src
+            .section_headers
+            .iter()
+            .map(|sh| Serialize::<Elf64Addr, E>::serialize(sh))
+            .into_iter()
+            .flatten()
+            .collect();
+
+        vec![ident_bytes, fh_bytes, ph_bytes, sh_bytes]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+}
 
 /// ElfHeaderParser implements a parser for ElfHeader types for each variant
 /// of address width from a source of a given endianness.
@@ -2379,5 +2379,46 @@ mod tests {
                 .unwrap()
                 .unwrap()
         )
+    }
+
+    #[test]
+    fn should_serialize_a_header_to_bytes() {
+        let elf_header = ElfHeader64Bit::<LittleEndianDataEncoding>::new(
+            EiIdent {
+                ei_data: EiData::Little,
+                ei_class: EiClass::SixtyFourBit,
+                ei_osabi: EiOsAbi::SysV,
+                ei_version: EiVersion::One,
+                ei_abiversion: EiAbiVersion::One,
+            },
+            FileHeader::<Elf64Addr> {
+                r#type: Type::None,
+                machine: Machine::X86_64,
+                version: Version::One,
+                entry_point: 5u64,
+                ph_offset: 10u64,
+                sh_offset: 11u64,
+                flags: 2,
+                eh_size: 0,
+                phent_size: 1,
+                phnum: 1,
+                shent_size: 1,
+                shnum: 1,
+                shstrndx: 1,
+            },
+            vec![ProgramHeader64Bit {
+                r#type: ProgramHeaderType::Null,
+                offset: 0x00,
+                vaddr: 0x00,
+                paddr: 0x00,
+                filesz: 0x00,
+                memsz: 0x00,
+                flags: 0x00,
+                align: 0x00,
+            }],
+            vec![],
+        );
+
+        assert_eq!(101, Into::<Vec<u8>>::into(elf_header).len())
     }
 }

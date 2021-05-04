@@ -2090,23 +2090,28 @@ where
     SectionHeaderParser<ElfAddr32, E>: Parser<'a, &'a [u8], SectionHeader32>,
 {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ElfHeader32<E>> {
-        let preparse_input = &input[0..];
-        match EiIdentParser.parse(&input)? {
+        let ms = match EiIdentParser.parse(&input)? {
             MatchStatus::Match((_, ei)) => FileHeaderParser::<ElfAddr32, E>::new()
-                .and_then(|fh| {
+                .and_then(move |fh| {
                     let phnum = fh.phnum as usize;
                     ProgramHeaderParser::<ElfAddr32, E>::new()
                         .take_n(phnum)
-                        .map(move |phs| (fh, phs))
+                        .map(move |phs| (ei, fh, phs))
                 })
-                .and_then(|(fh, phs)| {
-                    let shnum = fh.shnum as usize;
-                    SectionHeaderParser::<ElfAddr32, E>::new()
-                        .take_n(shnum)
-                        .map(move |shs| (fh, phs.to_owned(), shs))
-                })
-                .map(move |(fh, phs, shs)| ElfHeader32::new(ei, fh, phs, shs))
-                .parse(&preparse_input),
+                .parse(&input[0..]),
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }?;
+
+        match ms {
+            MatchStatus::Match((_, (ei, fh, phs))) => {
+                let shnum = fh.shnum as usize;
+                let sh_offset = fh.sh_offset as usize;
+                SectionHeaderParser::<ElfAddr32, E>::new()
+                    .take_n(shnum)
+                    .map(move |shs| (fh, phs.to_owned(), shs))
+                    .map(move |(fh, phs, shs)| ElfHeader32::new(ei, fh, phs, shs))
+                    .parse(&input[sh_offset..])
+            }
             MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
         }
     }
@@ -2120,23 +2125,28 @@ where
     SectionHeaderParser<ElfAddr64, E>: Parser<'a, &'a [u8], SectionHeader64>,
 {
     fn parse(&self, input: &'a [u8]) -> parcel::ParseResult<'a, &'a [u8], ElfHeader64<E>> {
-        let preparse_input = &input[0..];
-        match EiIdentParser.parse(&input)? {
+        let ms = match EiIdentParser.parse(&input)? {
             MatchStatus::Match((_, ei)) => FileHeaderParser::<ElfAddr64, E>::new()
-                .and_then(|fh| {
+                .and_then(move |fh| {
                     let phnum = fh.phnum as usize;
                     ProgramHeaderParser::<ElfAddr64, E>::new()
                         .take_n(phnum)
-                        .map(move |phs| (fh, phs))
+                        .map(move |phs| (ei, fh, phs))
                 })
-                .and_then(|(fh, phs)| {
-                    let shnum = fh.shnum as usize;
-                    SectionHeaderParser::<ElfAddr64, E>::new()
-                        .take_n(shnum)
-                        .map(move |shs| (fh, phs.to_owned(), shs))
-                })
-                .map(move |(fh, phs, shs)| ElfHeader64::new(ei, fh, phs, shs))
-                .parse(&preparse_input),
+                .parse(&input[0..]),
+            MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
+        }?;
+
+        match ms {
+            MatchStatus::Match((_, (ei, fh, phs))) => {
+                let shnum = fh.shnum as usize;
+                let sh_offset = fh.sh_offset as usize;
+                SectionHeaderParser::<ElfAddr64, E>::new()
+                    .take_n(shnum)
+                    .map(move |shs| (fh, phs.to_owned(), shs))
+                    .map(move |(fh, phs, shs)| ElfHeader64::new(ei, fh, phs, shs))
+                    .parse(&input[sh_offset..])
+            }
             MatchStatus::NoMatch(rem) => Ok(MatchStatus::NoMatch(rem)),
         }
     }

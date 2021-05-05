@@ -1441,12 +1441,15 @@ pub enum ShType {
     InitArray = 0x0e,
     FiniArray = 0x0f,
     PreInitArray = 0x10,
-    GnuHash = 0x11 | 0x6ffffff6,
+    GnuHash = 0x11,
     Group = 0x12,
     SymTabShndx = 0x13,
     GnuVerDef = 0x14,
     GnuVerNeed = 0x15,
     GnuVerSym = 0x16,
+    Auxiliary = 0x7ffffffd,
+    Used = 0x7ffffffe,
+    Filter = 0x7fffffff,
 }
 
 impl std::fmt::Display for ShType {
@@ -1473,6 +1476,9 @@ impl std::fmt::Display for ShType {
             ShType::GnuVerDef => "VERDEF",
             ShType::GnuVerNeed => "VERNEED",
             ShType::GnuVerSym => "VERSYM",
+            ShType::Auxiliary => "AUXILIARY",
+            ShType::Used => "USED",
+            ShType::Filter => "FILTER",
         };
 
         write!(f, "{}", repr)
@@ -1537,16 +1543,15 @@ where
             expect_u32(encoding, ShType::InitArray as u32).map(|_| ShType::InitArray),
             expect_u32(encoding, ShType::FiniArray as u32).map(|_| ShType::FiniArray),
             expect_u32(encoding, ShType::PreInitArray as u32).map(|_| ShType::PreInitArray),
-            parcel::one_of(vec![
-                expect_u32(encoding, ShType::GnuHash as u32),
-                expect_u32(encoding, 0x6ffffff6),
-            ])
-            .map(|_| ShType::GnuHash),
+            expect_u32(encoding, ShType::GnuHash as u32).map(|_| ShType::GnuHash),
             expect_u32(encoding, ShType::Group as u32).map(|_| ShType::Group),
             expect_u32(encoding, ShType::SymTabShndx as u32).map(|_| ShType::SymTabShndx),
-            expect_u32(encoding, ShType::GnuVerDef as u32).map(|_| ShType::GnuVerDef),
+            expect_u32(encoding, 0x14).map(|_| ShType::GnuVerDef),
             expect_u32(encoding, ShType::GnuVerNeed as u32).map(|_| ShType::GnuVerNeed),
-            expect_u32(encoding, ShType::GnuVerSym as u32).map(|_| ShType::GnuVerSym),
+            expect_u32(encoding, 0x16).map(|_| ShType::GnuVerSym),
+            expect_u32(encoding, ShType::Auxiliary as u32).map(|_| ShType::Auxiliary),
+            expect_u32(encoding, ShType::Used as u32).map(|_| ShType::Used),
+            expect_u32(encoding, ShType::Filter as u32).map(|_| ShType::Filter),
         ])
         .or(move || {
             match_u32(encoding).map(|x| {

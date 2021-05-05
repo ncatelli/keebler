@@ -1537,9 +1537,11 @@ where
             expect_u32(encoding, ShType::InitArray as u32).map(|_| ShType::InitArray),
             expect_u32(encoding, ShType::FiniArray as u32).map(|_| ShType::FiniArray),
             expect_u32(encoding, ShType::PreInitArray as u32).map(|_| ShType::PreInitArray),
-            expect_u32(encoding, ShType::GnuHash as u32)
-                .or(move || expect_u32(encoding, 0x6ffffff6))
-                .map(|_| ShType::GnuHash),
+            parcel::one_of(vec![
+                expect_u32(encoding, ShType::GnuHash as u32),
+                expect_u32(encoding, 0x6ffffff6),
+            ])
+            .map(|_| ShType::GnuHash),
             expect_u32(encoding, ShType::Group as u32).map(|_| ShType::Group),
             expect_u32(encoding, ShType::SymTabShndx as u32).map(|_| ShType::SymTabShndx),
             expect_u32(encoding, ShType::GnuVerDef as u32).map(|_| ShType::GnuVerDef),
